@@ -417,16 +417,13 @@ public class UtilLoggingXMLDecoder implements Decoder {
           exception = new String[]{""};
       }
 
-      LoggingEvent loggingEvent = new LoggingEvent();
-      loggingEvent.setLogger(logger);
-      loggingEvent.setTimeStamp(timeStamp);
-      loggingEvent.setLevel(level);
-      loggingEvent.setThreadName(threadName);
-      loggingEvent.setMessage(message);
-      loggingEvent.setNDC(ndc);
-      loggingEvent.setThrowableInformation(new ThrowableInformation(exception));
-      loggingEvent.setLocationInformation(info);
-      loggingEvent.setProperties(properties);
+        LoggingEvent loggingEvent = new LoggingEvent(null,
+                logger, timeStamp, level, message,
+                threadName,
+                new ThrowableInformation(exception),
+                ndc,
+                info,
+                properties);
 
       events.add(loggingEvent);
 

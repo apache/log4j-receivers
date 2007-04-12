@@ -256,7 +256,7 @@ public class SocketReceiver extends Receiver implements Runnable, PortBased,
                   "socket not null - creating and starting socketnode");
           socketList.add(socket);
 
-          SocketNode node = new SocketNode(socket, this);
+          SocketNode13 node = new SocketNode13(socket, this);
           synchronized (listenerList) {
             for (Iterator iter = listenerList.iterator();
                  iter.hasNext();) {
@@ -311,7 +311,7 @@ public class SocketReceiver extends Receiver implements Runnable, PortBased,
             ) {
       Socket socket = (Socket) enumeration.nextElement();
       details.add(
-        new SocketDetail(socket, (SocketNode) socketMap.get(socket)));
+        new SocketDetail(socket, (SocketNode13) socketMap.get(socket)));
     }
 
     return details;
@@ -380,7 +380,7 @@ public class SocketReceiver extends Receiver implements Runnable, PortBased,
     /**
      * Socket detail.
      */
-  public static final class SocketDetail implements AddressBased, PortBased,
+  private static final class SocketDetail implements AddressBased, PortBased,
     Pauseable {
       /**
        * Address.
@@ -393,7 +393,7 @@ public class SocketReceiver extends Receiver implements Runnable, PortBased,
       /**
        * Socket node.
        */
-    private SocketNode socketNode;
+    private SocketNode13 socketNode;
 
       /**
        * Create new instance.
@@ -401,7 +401,7 @@ public class SocketReceiver extends Receiver implements Runnable, PortBased,
        * @param node socket node
        */
     private SocketDetail(final Socket socket,
-                         final SocketNode node) {
+                         final SocketNode13 node) {
       super();
       this.address = socket.getInetAddress().getHostName();
       this.port = socket.getPort();
