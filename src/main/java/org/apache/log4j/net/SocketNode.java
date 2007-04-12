@@ -17,15 +17,6 @@
 
 package org.apache.log4j.net;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-
 import org.apache.log4j.Logger;
 import org.apache.log4j.plugins.Pauseable;
 import org.apache.log4j.plugins.Receiver;
@@ -33,6 +24,15 @@ import org.apache.log4j.spi.ComponentBase;
 import org.apache.log4j.spi.LoggerRepository;
 import org.apache.log4j.spi.LoggingEvent;
 
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.lang.reflect.Method;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 // Contributors:  Moses Hohman <mmhohman@rainbow.uchicago.edu>
 
@@ -67,6 +67,29 @@ public class SocketNode extends ComponentBase implements Runnable, Pauseable {
      * List of listeners.
      */
   private List listenerList = Collections.synchronizedList(new ArrayList());
+
+    /**
+     * Method descriptor for LoggingEvent.setProperty
+     *   which does not exist in log4j 1.2.14.
+     */
+  private static final Method LOGGING_EVENT_SET_PROPERTY =
+          getLoggingEventSetProperty();
+
+    /**
+     * Get method descriptor for LoggingEvent.setProperty
+     *   which does not exist in log4j 1.2.14.
+     * @return method descriptor or null if not supported.
+     */
+  private static Method getLoggingEventSetProperty() {
+      Method m = null;
+      try {
+          m = LoggingEvent.class.getMethod("setProperty",
+                          new Class[] { String.class, String.class });
+      } catch (NoSuchMethodException e) {
+          return null;
+      }
+      return m;
+  }
 
   /**
     Constructor for socket and logger repository.
@@ -127,6 +150,29 @@ public class SocketNode extends ComponentBase implements Runnable, Pauseable {
   }
 
     /**
+     * Set property in event.
+     * @param event event, may not be null.
+     * @param propName property name
+     * @param propValue property value
+     * @return true if property was set
+     */
+  private static boolean setEventProperty(
+          final LoggingEvent event,
+          final String propName,
+          final String propValue) {
+      if (LOGGING_EVENT_SET_PROPERTY != null) {
+          try {
+              LOGGING_EVENT_SET_PROPERTY.invoke(event,
+                      new Object[] { propName, propValue });
+              return true;
+          } catch (Exception e) {
+              return false;
+          }
+      }
+      return false;
+  }
+
+    /**
      * Deserialize events from socket until interrupted.
      */
   public void run() {
@@ -161,7 +207,7 @@ public class SocketNode extends ComponentBase implements Runnable, Pauseable {
           event = (LoggingEvent) ois.readObject();
 
           // store the known remote info in an event property
-          event.setProperty("log4j.remoteSourceInfo", remoteInfo);
+          setEventProperty(event, "log4j.remoteSourceInfo", remoteInfo);
 
           // if configured with a receiver, tell it to post the event
           if (!isPaused()) {
