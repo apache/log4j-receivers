@@ -755,16 +755,14 @@ public class LogFilePatternReceiver extends Receiver {
       info = LocationInfo.NA_LOCATION_INFO;
     }
 
-    LoggingEvent event = new LoggingEvent();
-    event.setLogger(logger);
-    event.setTimeStamp(timeStamp);
-    event.setLevel(levelImpl);
-    event.setThreadName(threadName);
-    event.setMessage(message);
-    event.setThrowableInformation(new ThrowableInformation(exception));
-    event.setLocationInformation(info);
-    event.setNDC(ndc);
-    event.setProperties(properties);
+    LoggingEvent event = new LoggingEvent(null,
+            logger, timeStamp, levelImpl, message,
+            threadName,
+            new ThrowableInformation(exception),
+            ndc,
+            info,
+            properties);
+
     return event;
   }
 
