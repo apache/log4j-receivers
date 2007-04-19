@@ -116,7 +116,12 @@
       <groupId>oro</groupId>
       <artifactId>oro</artifactId>
       <version>2.0.8</version>
-    </dependency>    
+    </dependency>  
+    <dependency>
+      <groupId>javax.jms</groupId>
+      <artifactId>jms</artifactId>
+      <version>1.1</version>
+    </dependency>  
   </dependencies>
   <reporting>
     <plugins>
