@@ -19,7 +19,6 @@ package org.apache.log4j.db;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.log4j.helpers.Constants;
 import org.apache.log4j.scheduler.Job;
 import org.apache.log4j.spi.ComponentBase;
 import org.apache.log4j.spi.LoggerRepository;
@@ -133,7 +132,7 @@ class DBReceiverJob extends ComponentBase implements Job {
 
 
         // Scott asked for this info to be
-        event.setProperty(Constants.LOG4J_ID_KEY, Long.toString(id));
+        event.setProperty("log4jid", Long.toString(id));
 
         if ((mask & DBHelper.PROPERTIES_EXIST) != 0) {
           getProperties(connection, id, event);
