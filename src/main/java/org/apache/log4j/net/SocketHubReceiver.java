@@ -17,23 +17,16 @@
 
 package org.apache.log4j.net;
 
+import org.apache.log4j.plugins.Plugin;
+import org.apache.log4j.plugins.Receiver;
+import org.apache.log4j.spi.LoggerRepository;
+
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.BufferedInputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.lang.reflect.Method;
-
-import org.apache.log4j.plugins.Plugin;
-import org.apache.log4j.plugins.Receiver;
-import org.apache.log4j.plugins.Pauseable;
-import org.apache.log4j.spi.LoggerRepository;
-import org.apache.log4j.spi.ComponentBase;
-import org.apache.log4j.spi.LoggingEvent;
-import org.apache.log4j.Logger;
 
 /**
   SocketHubReceiver receives a remote logging event on a configured

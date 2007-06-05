@@ -23,9 +23,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Hashtable;
 import java.util.StringTokenizer;
+import java.util.Properties;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.log4j.xml.UnrecognizedElementHandler;
+import org.apache.log4j.xml.DOMConfigurator;
 import org.apache.log4j.plugins.Pauseable;
 import org.apache.log4j.plugins.Receiver;
 import org.apache.log4j.scheduler.Job;
@@ -34,6 +37,8 @@ import org.apache.log4j.spi.LoggingEvent;
 import org.apache.log4j.spi.LoggerRepositoryEx;
 import org.apache.log4j.spi.ThrowableInformation;
 import org.apache.log4j.spi.LocationInfo;
+import org.apache.log4j.spi.OptionHandler;
+import org.w3c.dom.Element;
 
 /**
  * Converts log data stored in a database into LoggingEvents.
@@ -126,7 +131,7 @@ import org.apache.log4j.spi.LocationInfo;
  * @author Scott Deboy <sdeboy@apache.org>
  * <p>
  */
-public class CustomSQLDBReceiver extends Receiver implements Pauseable {
+public class CustomSQLDBReceiver extends Receiver implements Pauseable, UnrecognizedElementHandler {
 
     protected volatile Connection connection = null;
 
@@ -444,4 +449,20 @@ public class CustomSQLDBReceiver extends Receiver implements Pauseable {
             }
         }
     }
+
+    /**
+     * @{inheritDoc}
+     */
+  public boolean parseUnrecognizedElement(Element element, Properties props) throws Exception {
+        if ("connectionSource".equals(element.getNodeName())) {
+            OptionHandler instance =
+                    DOMConfigurator.parseElement(element, props, ConnectionSource.class);
+            if (instance instanceof ConnectionSource) {
+               setConnectionSource((ConnectionSource) instance);
+            }
+            return true;
+        }
+        return false;
+  }
+    
 }

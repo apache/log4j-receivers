@@ -21,18 +21,22 @@ import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.db.dialect.SQLDialect;
 import org.apache.log4j.db.dialect.Util;
 import org.apache.log4j.helpers.LogLog;
-import org.apache.log4j.spi.LoggingEvent;
 import org.apache.log4j.spi.LocationInfo;
+import org.apache.log4j.spi.LoggingEvent;
+import org.apache.log4j.xml.DOMConfigurator;
+import org.apache.log4j.xml.UnrecognizedElementHandler;
+import org.w3c.dom.Element;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-
 import java.util.Iterator;
+import java.util.Properties;
 import java.util.Set;
-import java.lang.reflect.*;
 
 
 /**
@@ -106,14 +110,14 @@ import java.lang.reflect.*;
  *
  * <p>
  * <b>Configuration </b> DBAppender can be configured programmatically, or using
- * {@link org.apache.log4j.joran.JoranConfigurator JoranConfigurator}. Example
+ * {@link org.apache.log4j.xml.DOMConfigurator JoranConfigurator}. Example
  * scripts can be found in the <em>tests/input/db</em> directory.
  *
  * @author Ceki G&uuml;lc&uuml;
  * @author Ray DeCampo
  * @since 1.3
  */
-public class DBAppender extends AppenderSkeleton {
+public class DBAppender extends AppenderSkeleton implements UnrecognizedElementHandler {
   static final String insertPropertiesSQL =
     "INSERT INTO  logging_event_property (event_id, mapped_key, mapped_value) VALUES (?, ?, ?)";
   static final String insertExceptionSQL =
@@ -163,7 +167,7 @@ public class DBAppender extends AppenderSkeleton {
   }
 
   public void activateOptions() {
-    getLogger().debug("DBAppender.activateOptions called");
+    LogLog.debug("DBAppender.activateOptions called");
 
     if (connectionSource == null) {
       throw new IllegalStateException(
@@ -198,7 +202,7 @@ public class DBAppender extends AppenderSkeleton {
    *          The connectionSource to set.
    */
   public void setConnectionSource(ConnectionSource connectionSource) {
-    getLogger().debug("setConnectionSource called for DBAppender");
+    LogLog.debug("setConnectionSource called for DBAppender");
     this.connectionSource = connectionSource;
   }
 
@@ -237,7 +241,7 @@ public class DBAppender extends AppenderSkeleton {
           
           int updateCount = insertStatement.executeUpdate();
           if (updateCount != 1) {
-              getLogger().warn("Failed to insert loggingEvent");
+              LogLog.warn("Failed to insert loggingEvent");
           }
           
           ResultSet rs = null;
@@ -254,7 +258,7 @@ public class DBAppender extends AppenderSkeleton {
                   }
                   throw ex; 
               } catch(IllegalAccessException ex) {
-                  getLogger().warn("IllegalAccessException invoking PreparedStatement.getGeneratedKeys", ex);
+                  LogLog.warn("IllegalAccessException invoking PreparedStatement.getGeneratedKeys", ex);
               }
           }
           
@@ -318,7 +322,7 @@ public class DBAppender extends AppenderSkeleton {
           String[] strRep = event.getThrowableStrRep();
           
           if (strRep != null) {
-              getLogger().debug("Logging an exception");
+              LogLog.debug("Logging an exception");
               
               PreparedStatement insertExceptionStatement =
                   connection.prepareStatement(insertExceptionSQL);
@@ -342,7 +346,7 @@ public class DBAppender extends AppenderSkeleton {
           
           connection.commit();
       } catch (Throwable sqle) {
-          getLogger().error("problem appending event", sqle);
+          LogLog.error("problem appending event", sqle);
       } finally {
           DBHelper.closeConnection(connection);
       }
@@ -377,30 +381,20 @@ public class DBAppender extends AppenderSkeleton {
       return false;
   }
 
- /** Here Be Dragons. 
-   * This code is necessary because this class originally came from the log4j 1.3 area, before being backported to 1.3
-   * In 1.3, Appenders had their own logger, but 1.2 does not have this, so instead we embed a 'compatible' mechanism here
-   * The goal was to keep the code as similar as possible, to avoid as many conflicts as possble.
-   * Code suggested by Curt Arnold (and not Curty Arnold... ;) )
-  */
-
-   private static final class LogLogger {
-        public void debug(final String msg) {
-             LogLog.debug(msg);
+    /**
+     * @{inheritDoc}
+     */
+  public boolean parseUnrecognizedElement(Element element, Properties props) throws Exception {
+        if ("connectionSource".equals(element.getNodeName())) {
+            Object instance =
+                    DOMConfigurator.parseElement(element, props, ConnectionSource.class);
+            if (instance instanceof ConnectionSource) {
+               ConnectionSource source = (ConnectionSource) instance;
+               source.activateOptions();
+               setConnectionSource(source);
+            }
+            return true;
         }
-       public void warn(final String msg, final Throwable ex) {
-             LogLog.warn(msg, ex);
-       }
-       public void warn(final String msg) {
-             LogLog.warn(msg);
-       }
-      public void error(final String msg, final Throwable ex) {
-            LogLog.error(msg, ex);
-     }
+        return false;
   }
-
-  private static final LogLogger getLogger() {
-     return new LogLogger();
-  }
-    
 }

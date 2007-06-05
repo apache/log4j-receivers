@@ -176,9 +176,15 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>hsqldb</groupId>
+      <artifactId>hsqldb</artifactId>
+      <version>1.8.0.7</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
-      <version>1.2.15</version>
+      <version>1.2.15-SNAPSHOT</version>
     </dependency>    
     <dependency>
       <groupId>log4j</groupId>

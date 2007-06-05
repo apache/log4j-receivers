@@ -21,16 +21,14 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.scheduler.Job;
 import org.apache.log4j.spi.ComponentBase;
-import org.apache.log4j.spi.LoggerRepository;
+import org.apache.log4j.spi.LocationInfo;
 import org.apache.log4j.spi.LoggingEvent;
 import org.apache.log4j.spi.ThrowableInformation;
-import org.apache.log4j.spi.LocationInfo;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -54,7 +52,7 @@ class DBReceiverJob extends ComponentBase implements Job {
     "WHERE event_id > ?  ORDER BY event_id ASC";
 
 
-  long lastId = 0;
+  long lastId = Short.MIN_VALUE;
 
   DBReceiver parentDBReceiver;
 
@@ -197,7 +195,6 @@ class DBReceiverJob extends ComponentBase implements Job {
    * 
    * @param connection
    * @param id
-   * @param event
    * @throws SQLException
    */
   ThrowableInformation getException(Connection connection, long id)
