@@ -36,9 +36,10 @@ Use of Maven to build this component is recommended.
     <property name="m2_repo" location="${user.home}/.m2/repository"/>
 
 	<!--  Versions for dependencies   -->
-    <property name="log4j.version" value="1.2.15"/>
+    <property name="log4j.version" value="1.2.15-SNAPSHOT"/>
     <property name="junit.version" value="4.3.1"/>
 	<property name="oro.version" value="2.0.8"/>
+	<property name="hsqldb.version" value="1.8.0.7"/>
 	<property name="component.version" value="1.0-SNAPSHOT"/>
 	<property name="filters.version" value="1.0-SNAPSHOT"/>
 	<property name="jms.version" value="1.1"/>
@@ -56,6 +57,8 @@ Use of Maven to build this component is recommended.
        location="${m2_repo}/oro/oro/${oro.version}/oro-${oro.version}.jar"/>
     <property name="jms.jar"
 	   location="${m2_repo}/javax/jms/jms/${jms.version}/jms-${jms.version}.jar"/>
+    <property name="hsqldb.jar"
+	   location="${m2_repo}/hsqldb/hsqldb/${hsqldb.version}/hsqldb-${hsqldb.version}.jar"/>
 
     <!--   Java compiler settings   -->
     <property name="javac.source" value="1.2"/>
@@ -74,6 +77,7 @@ Use of Maven to build this component is recommended.
 		<path refid="compile-classpath"/>
 		<pathelement location="target/classes"/>
 		<pathelement location="${junit.jar}"/>
+		<pathelement location="${hsqldb.jar}"/>
 	</path>
 	
     <target name="compile" depends="init" description="Compile implementation files">

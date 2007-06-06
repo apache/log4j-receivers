@@ -455,10 +455,12 @@ public class CustomSQLDBReceiver extends Receiver implements Pauseable, Unrecogn
      */
   public boolean parseUnrecognizedElement(Element element, Properties props) throws Exception {
         if ("connectionSource".equals(element.getNodeName())) {
-            OptionHandler instance =
+            Object instance =
                     DOMConfigurator.parseElement(element, props, ConnectionSource.class);
             if (instance instanceof ConnectionSource) {
-               setConnectionSource((ConnectionSource) instance);
+               ConnectionSource source = (ConnectionSource) instance;
+               source.activateOptions();
+               setConnectionSource(source);
             }
             return true;
         }
