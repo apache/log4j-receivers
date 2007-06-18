@@ -40,6 +40,7 @@ public class LogFilePatternReceiverBeanInfo extends SimpleBeanInfo {
         new PropertyDescriptor("tailing", LogFilePatternReceiver.class),
         new PropertyDescriptor(
           "filterExpression", LogFilePatternReceiver.class),
+        new PropertyDescriptor("useCurrentThread", LogFilePatternReceiver.class),
       };
     } catch (Exception e) {
     }

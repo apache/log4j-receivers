@@ -192,7 +192,7 @@ public class LogFilePatternReceiver extends Receiver {
   private Reader reader;
   private String timestampPatternText;
 
-private boolean useCurrentThread;
+  private boolean useCurrentThread;
 
   public LogFilePatternReceiver() {
     keywords.add(TIMESTAMP);
