@@ -192,6 +192,8 @@ public class LogFilePatternReceiver extends Receiver {
   private Reader reader;
   private String timestampPatternText;
 
+private boolean useCurrentThread;
+
   public LogFilePatternReceiver() {
     keywords.add(TIMESTAMP);
     keywords.add(LOGGER);
@@ -800,7 +802,7 @@ public class LogFilePatternReceiver extends Receiver {
    * Read and process the log file.
    */
   public void activateOptions() {
-    new Thread(new Runnable() {
+    Runnable runnable = new Runnable() {
       public void run() {
         initialize();
         while (reader == null) {
@@ -826,6 +828,31 @@ public class LogFilePatternReceiver extends Receiver {
           getLogger().info("stream closed");
         }
       }
-    }).start();
+    };
+    if(useCurrentThread) {
+        runnable.run();
+    }else {
+        new Thread(runnable, "LogFilePatternReceiver-"+getName()).start();
+    }
   }
+
+     /**
+      * When true, this property uses the current Thread to perform the import,
+      * otherwise when false (the default), a new Thread is created and started to manage
+      * the import.
+      * @return
+      */ 
+    public final boolean isUseCurrentThread() {
+        return useCurrentThread;
+    }
+
+    /**
+     * Sets whether the current Thread or a new Thread is created to perform the import,
+     * the default being false (new Thread created).
+     * 
+     * @param useCurrentThread
+     */
+    public final void setUseCurrentThread(boolean useCurrentThread) {
+        this.useCurrentThread = useCurrentThread;
+    }
 }
