@@ -17,10 +17,10 @@
 -->
 <document>
   <properties>
-    <title>Receivers</title>
+    <title>Apache Receivers Companion for log4j 1.2.</title>
   </properties>
   <body>
-    <release version="1.0" date="2007-06-05" description="First release">
+    <release version="1.0" date="2007-06-27" description="First release">
       <action issue="42102" type="add">
         Initial release of receivers companion backported from log4j 1.3.
       </action>

@@ -21,6 +21,8 @@
 This is a minimal build file to support Gump.
 Use of Maven to build this component is recommended.
 
+Specify -Dcompanion.jar=foo.jar to test a previously prepared jar.
+
 -->
 <project default="test">
     <!--  use build.properties file or command line to override these properties  -->
@@ -36,12 +38,12 @@ Use of Maven to build this component is recommended.
     <property name="m2_repo" location="${user.home}/.m2/repository"/>
 
 	<!--  Versions for dependencies   -->
-    <property name="log4j.version" value="1.2.15-SNAPSHOT"/>
-    <property name="junit.version" value="4.3.1"/>
+    <property name="log4j.version" value="1.2.15"/>
+    <property name="junit.version" value="3.8.1"/>
 	<property name="oro.version" value="2.0.8"/>
 	<property name="hsqldb.version" value="1.8.0.7"/>
-	<property name="component.version" value="1.0-SNAPSHOT"/>
-	<property name="filters.version" value="1.0-SNAPSHOT"/>
+	<property name="component.version" value="1.0"/>
+	<property name="filters.version" value="1.0"/>
 	<property name="jms.version" value="1.1"/>
 	
 	<!--  Dependency locations - assumed to be in Maven 2 repository   -->
@@ -72,15 +74,7 @@ Use of Maven to build this component is recommended.
     	<delete dir="target"/>
     </target>
     
-    <path id="compile-classpath" path="${log4j.jar}:${oro.jar}:${component.jar}:${filters.jar}:${jms.jar}"/>
-	<path id="test-classpath">
-		<path refid="compile-classpath"/>
-		<pathelement location="target/classes"/>
-		<pathelement location="${junit.jar}"/>
-		<pathelement location="${hsqldb.jar}"/>
-	</path>
-	
-    <target name="compile" depends="init" description="Compile implementation files">
+    <target name="compile" depends="init" unless="companion.jar" description="Compile implementation files">
         <mkdir dir="target/classes"/>
     	<javac destdir="target/classes"
            srcdir="src/main/java"
@@ -88,13 +82,13 @@ Use of Maven to build this component is recommended.
     	   debug="${javac.debug}"
     	   target="${javac.target}"
     	   source="${javac.source}"
-    	   classpathref="compile-classpath"/>
-    	<copy todir="target/classes">
+    	   classpath="${log4j.jar}:${oro.jar}:${component.jar}:${filters.jar}:${jms.jar}"/>
+    	<copy todir="target/classes" overwrite="true">
     	    <fileset dir="src/main/resources"/>
     	</copy>
     </target>
     
-    <target name="jar" depends="compile" description="Create jar">
+    <target name="jar" depends="compile" unless="companion.jar" description="Create jar">
     	<jar destfile="target/${project.jar}"
     	     basedir="target/classes">
     	  	<manifest>
@@ -108,7 +102,8 @@ Use of Maven to build this component is recommended.
     	</jar>
     </target>    
 
-    <target name="test-compile" depends="compile" description="Compile test files">
+    <target name="test-compile" depends="jar" description="Compile test files">
+	    <property name="companion.jar" value="target/${project.jar}"/>
         <mkdir dir="target/test-classes"/>
     	<javac destdir="target/test-classes"
            srcdir="src/test/java"
@@ -116,8 +111,8 @@ Use of Maven to build this component is recommended.
     	   debug="${javac.debug}"
     	   target="${javac.target}"
     	   source="${javac.source}"
-    	   classpathref="test-classpath"/>
-    	<copy todir="target/test-classes">
+    	   classpath="${companion.jar}:${hsqldb.jar}:${junit.jar}:${log4j.jar}:${oro.jar}:${component.jar}:${filters.jar}:${jms.jar}"/>
+    	<copy todir="target/test-classes" overwrite="true">
     		<fileset dir="src/test/resources"/>
     	</copy>
     </target>    
@@ -125,12 +120,10 @@ Use of Maven to build this component is recommended.
 
     <target name="test" depends="test-compile" description="Run unit tests">
     	<junit printsummary="yes" fork="yes" dir="target">
-    	    <classpath>
-				<path refid="test-classpath"/>
-				<pathelement path="target/test-classes"/>
-			</classpath>
+    	    <classpath path="target/test-classes:${companion.jar}:${hsqldb.jar}:${junit.jar}:${log4j.jar}:${oro.jar}:${component.jar}:${filters.jar}:${jms.jar}"/>
     		<batchtest>
     			<fileset dir="src/test/java/">
+    				<include name="**/Test*.java"/>
     				<include name="**/*TestCase.java"/>
     				<include name="**/*Test.java"/>
     			</fileset>
