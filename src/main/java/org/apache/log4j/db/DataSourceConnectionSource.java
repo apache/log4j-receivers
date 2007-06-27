@@ -18,10 +18,14 @@
 package org.apache.log4j.db;
 
 
-import java.sql.Connection;
-import java.sql.SQLException;
+import org.apache.log4j.xml.DOMConfigurator;
+import org.apache.log4j.xml.UnrecognizedElementHandler;
+import org.w3c.dom.Element;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.Properties;
 
 
 /**
@@ -33,7 +37,8 @@ import javax.sql.DataSource;
  *  @author Ray DeCampo
  *  @author Ceki G&uuml;lc&uuml;
  */
-public class DataSourceConnectionSource extends ConnectionSourceSkeleton {
+public class DataSourceConnectionSource extends ConnectionSourceSkeleton
+        implements UnrecognizedElementHandler {
 
   private DataSource dataSource;
 
@@ -82,5 +87,19 @@ public class DataSourceConnectionSource extends ConnectionSourceSkeleton {
     this.dataSource = dataSource;
   }
 
+    /**
+     * @{inheritDoc}
+     */
+  public boolean parseUnrecognizedElement(Element element, Properties props) throws Exception {
+        if ("dataSource".equals(element.getNodeName())) {
+            Object instance =
+                    DOMConfigurator.parseElement(element, props, DataSource.class);
+            if (instance instanceof DataSource) {
+               setDataSource((DataSource) instance);
+            }
+            return true;
+        }
+        return false;
+  }
 
 }
