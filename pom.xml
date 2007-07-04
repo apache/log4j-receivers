@@ -193,7 +193,7 @@
     </dependency>    
     <dependency>
       <groupId>log4j</groupId>
-      <artifactId>apache-log4j-filters</artifactId>
+      <artifactId>apache-log4j-extras</artifactId>
       <version>1.0</version>
     </dependency>
     <dependency>

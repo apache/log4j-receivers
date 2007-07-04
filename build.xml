@@ -43,7 +43,7 @@ Specify -Dcompanion.jar=foo.jar to test a previously prepared jar.
 	<property name="oro.version" value="2.0.8"/>
 	<property name="hsqldb.version" value="1.8.0.7"/>
 	<property name="component.version" value="1.0"/>
-	<property name="filters.version" value="1.0"/>
+	<property name="extras.version" value="1.0"/>
 	<property name="jms.version" value="1.1"/>
 	
 	<!--  Dependency locations - assumed to be in Maven 2 repository   -->
@@ -53,8 +53,8 @@ Specify -Dcompanion.jar=foo.jar to test a previously prepared jar.
        location="${m2_repo}/log4j/log4j/${log4j.version}/log4j-${log4j.version}.jar"/>
     <property name="component.jar" 
        location="${m2_repo}/log4j/apache-log4j-component/${component.version}/apache-log4j-component-${component.version}.jar"/>
-    <property name="filters.jar" 
-       location="${m2_repo}/log4j/apache-log4j-filters/${filters.version}/apache-log4j-filters-${filters.version}.jar"/>
+    <property name="extras.jar" 
+       location="${m2_repo}/log4j/apache-log4j-extras/${extras.version}/apache-log4j-extras-${extras.version}.jar"/>
     <property name="oro.jar" 
        location="${m2_repo}/oro/oro/${oro.version}/oro-${oro.version}.jar"/>
     <property name="jms.jar"
@@ -82,7 +82,7 @@ Specify -Dcompanion.jar=foo.jar to test a previously prepared jar.
     	   debug="${javac.debug}"
     	   target="${javac.target}"
     	   source="${javac.source}"
-    	   classpath="${log4j.jar}:${oro.jar}:${component.jar}:${filters.jar}:${jms.jar}"/>
+    	   classpath="${log4j.jar}:${oro.jar}:${component.jar}:${extras.jar}:${jms.jar}"/>
     	<copy todir="target/classes" overwrite="true">
     	    <fileset dir="src/main/resources"/>
     	</copy>
@@ -111,7 +111,7 @@ Specify -Dcompanion.jar=foo.jar to test a previously prepared jar.
     	   debug="${javac.debug}"
     	   target="${javac.target}"
     	   source="${javac.source}"
-    	   classpath="${companion.jar}:${hsqldb.jar}:${junit.jar}:${log4j.jar}:${oro.jar}:${component.jar}:${filters.jar}:${jms.jar}"/>
+    	   classpath="${companion.jar}:${hsqldb.jar}:${junit.jar}:${log4j.jar}:${oro.jar}:${component.jar}:${extras.jar}:${jms.jar}"/>
     	<copy todir="target/test-classes" overwrite="true">
     		<fileset dir="src/test/resources"/>
     	</copy>
@@ -120,7 +120,7 @@ Specify -Dcompanion.jar=foo.jar to test a previously prepared jar.
 
     <target name="test" depends="test-compile" description="Run unit tests">
     	<junit printsummary="yes" fork="yes" dir="target">
-    	    <classpath path="target/test-classes:${companion.jar}:${hsqldb.jar}:${junit.jar}:${log4j.jar}:${oro.jar}:${component.jar}:${filters.jar}:${jms.jar}"/>
+    	    <classpath path="target/test-classes:${companion.jar}:${hsqldb.jar}:${junit.jar}:${log4j.jar}:${oro.jar}:${component.jar}:${extras.jar}:${jms.jar}"/>
     		<batchtest>
     			<fileset dir="src/test/java/">
     				<include name="**/Test*.java"/>
