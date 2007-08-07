@@ -218,9 +218,6 @@ public class UDPAppender extends AppenderSkeleton implements PortBased{
         DatagramPacket dp =
            new DatagramPacket(payload, payload.length, address, port);
         outSocket.send(dp);
-        //remove these properties, in case other appenders need to set them to different values 
-        event.setProperty(Constants.HOSTNAME_KEY, null);
-        event.setProperty(Constants.APPLICATION_KEY, null);
       } catch (IOException e) {
         outSocket = null;
         LogLog.warn("Detected problem with UDP connection: " + e);

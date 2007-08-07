@@ -68,6 +68,8 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
   int port = DEFAULT_PORT;
   MulticastSocket outSocket;
   private String encoding;
+
+  private boolean locationInfo = false;
   
   public MulticastAppender() {
      super(false);
@@ -158,6 +160,10 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
       return;
     }
 
+    if(locationInfo) {
+	   event.getLocationInformation();
+	}
+
     if (outSocket != null) {
       //if the values already exist, don't set (useful when forwarding from a simplesocketserver
       if (
@@ -169,6 +175,11 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
           event.setProperty(Constants.APPLICATION_KEY, application);
         }
       }
+      
+		if(locationInfo) {
+		   event.getLocationInformation();
+		}
+
 
       try {
         StringBuffer buf = new StringBuffer(layout.format(event));
@@ -183,9 +194,6 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
         DatagramPacket dp =
            new DatagramPacket(payload, payload.length, address, port);
         outSocket.send(dp);
-        //remove these properties, in case other appenders need to set them to different values 
-        event.setProperty(Constants.HOSTNAME_KEY, null);
-        event.setProperty(Constants.APPLICATION_KEY, null);
       } catch (IOException e) {
         outSocket = null;
         LogLog.warn("Detected problem with Multicast connection: " + e);
@@ -215,6 +223,22 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
    */
   public String getRemoteHost() {
     return remoteHost;
+  }
+
+  /**
+  The <b>LocationInfo</b> option takes a boolean value. If true,
+  the information sent to the remote host will include location
+  information. By default no location information is sent to the server.
+   */
+  public void setLocationInfo(boolean locationInfo) {
+	  this.locationInfo = locationInfo;
+  }
+
+  /**
+   * Returns value of the <b>LocationInfo</b> option.
+   */
+  public boolean getLocationInfo() {
+	  return locationInfo;
   }
 
   /**

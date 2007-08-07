@@ -190,9 +190,10 @@ public class LogFilePatternReceiver extends Receiver {
 
   private String regexp;
   private Reader reader;
+  private Pattern regexpPattern;
   private String timestampPatternText;
 
-  private boolean useCurrentThread;
+private boolean useCurrentThread;
 
   public LogFilePatternReceiver() {
     keywords.add(TIMESTAMP);
@@ -260,6 +261,26 @@ public class LogFilePatternReceiver extends Receiver {
   public void setTailing(boolean tailing) {
     this.tailing = tailing;
   }
+
+  /**
+   * When true, this property uses the current Thread to perform the import,
+   * otherwise when false (the default), a new Thread is created and started to manage
+   * the import.
+   * @return
+   */ 
+ public final boolean isUseCurrentThread() {
+     return useCurrentThread;
+ }
+
+ /**
+  * Sets whether the current Thread or a new Thread is created to perform the import,
+  * the default being false (new Thread created).
+  * 
+  * @param useCurrentThread
+  */
+ public final void setUseCurrentThread(boolean useCurrentThread) {
+     this.useCurrentThread = useCurrentThread;
+ }
 
   /**
    * Accessor
@@ -418,56 +439,48 @@ public class LogFilePatternReceiver extends Receiver {
    * @param unbufferedReader
    * @throws IOException
    */
-  protected void process(Reader unbufferedReader) throws IOException {
-    BufferedReader bufferedReader = new BufferedReader(unbufferedReader);
+  protected void process(BufferedReader bufferedReader) throws IOException {
 
-    Perl5Compiler compiler = new Perl5Compiler();
-    Pattern regexpPattern = null;
-    try {
-      regexpPattern = compiler.compile(regexp);
-    } catch (MalformedPatternException mpe) {
-      throw new RuntimeException("Bad pattern: " + regexp);
+        Perl5Matcher eventMatcher = new Perl5Matcher();
+        String line;
+        while ((line = bufferedReader.readLine()) != null) {
+            if (eventMatcher.matches(line, regexpPattern)) {
+                //build an event from the previous match (held in current map)
+                LoggingEvent event = buildEvent();
+                if (event != null) {
+                    if (passesExpression(event)) {
+                        doPost(event);
+                    }
+                }
+                currentMap.putAll(processEvent(eventMatcher.getMatch()));
+            } else {
+                //getLogger().debug("line doesn't match pattern - must be ")
+                //may be an exception or additional message lines
+                additionalLines.add(line);
+            }
+        }
+
+        //process last event if one exists
+        LoggingEvent event = buildEvent();
+        if (event != null) {
+            if (passesExpression(event)) {
+                doPost(event);
+            }
+            getLogger().debug("no further lines to process in " + fileURL);
+        }
     }
 
-    Perl5Matcher eventMatcher = new Perl5Matcher(); 
-    String line = null;
-    getLogger().debug("tailing file: " + tailing);
-    do {
-      while ((line = bufferedReader.readLine()) != null) {
-        if (eventMatcher.matches(line, regexpPattern)) {
-          //build an event from the previous match (held in current map)
-          LoggingEvent event = buildEvent();
-          if (event != null) {
-            if (passesExpression(event)) {
-              doPost(event);
-            }
-          }
-          currentMap.putAll(processEvent(eventMatcher.getMatch()));
-        } else {
-          //getLogger().debug("line doesn't match pattern - must be ")
-          //may be an exception or additional message lines
-          additionalLines.add(line);
+    /**
+     * create the regular expression pattern using the input regular expression
+     */
+    protected void createPattern() {
+        Perl5Compiler compiler = new Perl5Compiler();
+        try {
+            regexpPattern = compiler.compile(regexp);
+        } catch (MalformedPatternException mpe) {
+            throw new RuntimeException("Bad pattern: " + regexp);
         }
-      }
-
-      //process last event if one exists
-      LoggingEvent event = buildEvent();
-      if (event != null) {
-        if (passesExpression(event)) {
-          doPost(event);
-        }
-        getLogger().debug("no further lines to process in " + fileURL);
-      }
-      try {
-        synchronized (this) {
-          wait(2000);
-        }
-      } catch (InterruptedException ie) {
-      }
-    } while (tailing);
-    getLogger().debug("processing " + fileURL + " complete");
-    shutdown();
-  }
+    }
 
   /**
    * Helper method that supports the evaluation of the expression
@@ -802,57 +815,51 @@ public class LogFilePatternReceiver extends Receiver {
    * Read and process the log file.
    */
   public void activateOptions() {
-    Runnable runnable = new Runnable() {
-      public void run() {
-        initialize();
-        while (reader == null) {
-          getLogger().info("attempting to load file: " + getFileURL());
-	        try {
-	          reader = new InputStreamReader(new URL(getFileURL()).openStream());
-	        } catch (FileNotFoundException fnfe) {
-	          getLogger().info("file not available - will try again in 10 seconds");
-	          synchronized(this) {
-	            try {
-	              wait(10000);
-	            } catch (InterruptedException ie){}
-	          }
-	        } catch (IOException ioe) {
-	          getLogger().warn("unable to load file", ioe);
-	          return;
-	        }
-        } 
-        try {
-          process(reader);
-        } catch (IOException ioe) {
-          //io exception - probably shut down
-          getLogger().info("stream closed");
+	Runnable runnable = new Runnable() {
+	             public void run() {
+                initialize();
+                while (reader == null) {
+                    getLogger().info("attempting to load file: " + getFileURL());
+                    try {
+                        reader = new InputStreamReader(new URL(getFileURL()).openStream());
+                    } catch (FileNotFoundException fnfe) {
+                        getLogger().info("file not available - will try again in 10 seconds");
+                        synchronized (this) {
+                            try {
+                                wait(10000);
+                            } catch (InterruptedException ie) {}
+                        }
+                    } catch (IOException ioe) {
+                        getLogger().warn("unable to load file", ioe);
+                        return;
+                    }
+                }
+                try {
+                    BufferedReader bufferedReader = new BufferedReader(reader);
+                    createPattern();
+                    do {
+                        getLogger().debug("tailing file: " + tailing);
+                        process(bufferedReader);
+                        try {
+                            synchronized (this) {
+                                wait(2000);
+                            }
+                        } catch (InterruptedException ie) {
+                        }
+                    } while (tailing);
+
+                } catch (IOException ioe) {
+                    //io exception - probably shut down
+                    getLogger().info("stream closed");
+                }
+                getLogger().debug("processing " + fileURL + " complete");
+                shutdown();
+            }
+        };
+        if(useCurrentThread) {
+            runnable.run();
+        }else {
+            new Thread(runnable, "LogFilePatternReceiver-"+getName()).start();
         }
-      }
-    };
-    if(useCurrentThread) {
-        runnable.run();
-    }else {
-        new Thread(runnable, "LogFilePatternReceiver-"+getName()).start();
-    }
-  }
-
-     /**
-      * When true, this property uses the current Thread to perform the import,
-      * otherwise when false (the default), a new Thread is created and started to manage
-      * the import.
-      * @return
-      */ 
-    public final boolean isUseCurrentThread() {
-        return useCurrentThread;
-    }
-
-    /**
-     * Sets whether the current Thread or a new Thread is created to perform the import,
-     * the default being false (new Thread created).
-     * 
-     * @param useCurrentThread
-     */
-    public final void setUseCurrentThread(boolean useCurrentThread) {
-        this.useCurrentThread = useCurrentThread;
     }
 }
