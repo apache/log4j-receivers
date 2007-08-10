@@ -735,7 +735,7 @@ private boolean useCurrentThread;
     }
 
     level = (String) fieldMap.remove(LEVEL);
-    Level levelImpl = Level.toLevel(level.trim());
+    Level levelImpl = (level == null ? Level.DEBUG : Level.toLevel(level.trim()));
 
     threadName = (String) fieldMap.remove(THREAD);
 
