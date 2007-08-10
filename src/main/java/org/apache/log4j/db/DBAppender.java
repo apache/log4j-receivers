@@ -212,8 +212,12 @@ public class DBAppender extends AppenderSkeleton implements UnrecognizedElementH
           connection = connectionSource.getConnection();
           connection.setAutoCommit(false);
           
-          PreparedStatement insertStatement =
-              connection.prepareStatement(insertSQL);
+          PreparedStatement insertStatement;
+          if (cnxSupportsGetGeneratedKeys) {
+        	  insertStatement = connection.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS);
+          } else {
+              insertStatement = connection.prepareStatement(insertSQL);
+          }
 
 /*          insertStatement.setLong(1, event.getSequenceNumber());*/
 		  insertStatement.setLong(1, 0);
