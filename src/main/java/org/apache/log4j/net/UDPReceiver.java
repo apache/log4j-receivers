@@ -98,7 +98,9 @@ public class UDPReceiver extends Receiver implements PortBased, Pauseable {
     closed = true;
     // Closing the datagram socket will unblock the UDPReceiverThread if it is
     // was waiting to receive data from the socket.
-    socket.close();
+    if (socket != null) {
+    	socket.close();
+    }
 
     try {
       if(handlerThread != null) {
