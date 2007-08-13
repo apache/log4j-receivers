@@ -31,7 +31,6 @@ import java.util.Vector;
  * (usually XML).
  *
  *  @author Scott Deboy (sdeboy@apache.org)
- *  @since 1.3
  */
 public interface Decoder {
     /**

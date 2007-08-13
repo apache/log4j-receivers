@@ -28,7 +28,6 @@ import javax.swing.ListModel;
  * A very basic appender that takes the events and stores them in to a
  * ListModel for late retrieval.
  *
- * @since 1.3
  *
  * @author Paul Smith (psmith@apache.org)
  *

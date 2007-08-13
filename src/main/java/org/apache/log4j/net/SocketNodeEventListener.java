@@ -26,7 +26,6 @@ import java.util.EventListener;
 
   @author Mark Womack
   @author Paul Smith (psmith@apache.org)
-  @since 1.3
 */
 public interface SocketNodeEventListener extends EventListener {
 

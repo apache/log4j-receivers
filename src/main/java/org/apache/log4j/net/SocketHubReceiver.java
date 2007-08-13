@@ -40,7 +40,6 @@ import java.util.List;
   @author Mark Womack
   @author Ceki G&uuml;lc&uuml;
   @author Paul Smith (psmith@apache.org)
-  @since 1.3
 */
 public class SocketHubReceiver
 extends Receiver implements SocketNodeEventListener, PortBased {

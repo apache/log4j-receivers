@@ -41,7 +41,6 @@ import org.apache.log4j.spi.LoggingEvent;
   @author Mark Womack
   @author Scott Deboy <sdeboy@apache.org>
 
-    @since 1.3
 */
 public class XMLSocketReceiver extends Receiver implements Runnable, PortBased, Pauseable {
   protected boolean active = false;

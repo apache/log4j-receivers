@@ -56,7 +56,6 @@ appenders currently configured in the LoggerRespository.
 
 @author Scott Deboy <sdeboy@apache.org>
 
-  @since 1.3
 */
 
 public class LogFileXMLReceiver extends Receiver {

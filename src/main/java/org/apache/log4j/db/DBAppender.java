@@ -115,7 +115,6 @@ import java.util.Set;
  *
  * @author Ceki G&uuml;lc&uuml;
  * @author Ray DeCampo
- * @since 1.3
  */
 public class DBAppender extends AppenderSkeleton implements UnrecognizedElementHandler {
   static final String insertPropertiesSQL =

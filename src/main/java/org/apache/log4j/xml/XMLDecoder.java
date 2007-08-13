@@ -56,7 +56,6 @@ import org.xml.sax.InputSource;
  * NOTE:  Only a single LoggingEvent is returned from the decode method
  * even though the DTD supports multiple events nested in an eventSet.
  *
- * @since 1.3
  *
  * @author Scott Deboy (sdeboy@apache.org)
  * @author Paul Smith (psmith@apache.org)

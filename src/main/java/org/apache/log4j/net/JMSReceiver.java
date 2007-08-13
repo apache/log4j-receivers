@@ -54,7 +54,6 @@ import org.apache.log4j.plugins.Receiver;
   @author Mark Womack
   @author Paul Smith
   @author Stephen Pain
-  @since 1.3
 */
 public class JMSReceiver extends Receiver implements MessageListener {
 

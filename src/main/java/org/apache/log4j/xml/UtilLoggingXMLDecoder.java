@@ -54,7 +54,6 @@ import org.xml.sax.InputSource;
  *
  * @author Scott Deboy (sdeboy@apache.org)
  * @author Paul Smith (psmith@apache.org)
- * @since 1.3
  *
  */
 public class UtilLoggingXMLDecoder implements Decoder {

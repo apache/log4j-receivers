@@ -29,7 +29,6 @@ import java.io.InputStream;
  * <code>java 1.4's logging dtd, logger.dtd</code>
  * which is embedded within the log4j jar file.  Based on EntityResolver.
  *
- * @since 1.3
  *
  * @author Paul Austin
  * @author Scott Deboy (sdeboy@apache.org)
