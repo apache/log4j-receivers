@@ -22,22 +22,21 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Hashtable;
-import java.util.StringTokenizer;
 import java.util.Properties;
+import java.util.StringTokenizer;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.log4j.xml.UnrecognizedElementHandler;
-import org.apache.log4j.xml.DOMConfigurator;
 import org.apache.log4j.plugins.Pauseable;
 import org.apache.log4j.plugins.Receiver;
 import org.apache.log4j.scheduler.Job;
 import org.apache.log4j.scheduler.Scheduler;
-import org.apache.log4j.spi.LoggingEvent;
-import org.apache.log4j.spi.LoggerRepositoryEx;
-import org.apache.log4j.spi.ThrowableInformation;
 import org.apache.log4j.spi.LocationInfo;
-import org.apache.log4j.spi.OptionHandler;
+import org.apache.log4j.spi.LoggerRepositoryEx;
+import org.apache.log4j.spi.LoggingEvent;
+import org.apache.log4j.spi.ThrowableInformation;
+import org.apache.log4j.xml.DOMConfigurator;
+import org.apache.log4j.xml.UnrecognizedElementHandler;
 import org.w3c.dom.Element;
 
 /**
@@ -81,7 +80,7 @@ import org.w3c.dom.Element;
  * The select statement must provide ALL fields which define a LoggingEvent.
  * <p>
  * The SQL statement MUST include the columns: LOGGER, TIMESTAMP, LEVEL, THREAD,
- * MESSAGE, NDC, MDC, CLASS, METHOD, FILE, LINE, PROPERTIES, EXCEPTION
+ * MESSAGE, NDC, MDC, CLASS, METHOD, FILE, LINE, PROPERTIES, THROWABLE
  * <p>
  * Use ' AS ' in the SQL statement to alias the SQL's column names to match your
  * database schema. (see example below).
@@ -126,7 +125,7 @@ import org.w3c.dom.Element;
  * THREAD, message as MESSAGE, ndc as NDC, mdc as MDC, class as CLASS, method as
  * METHOD, file as FILE, line as LINE,
  * concat("{{application,databaselogs,hostname,mymachine, log4jid,",
- * COUNTER,"}}") as PROPERTIES, "" as EXCEPTION from logtable
+ * COUNTER,"}}") as PROPERTIES, "" as THROWABLE from logtable
  * <p>
  * @author Scott Deboy <sdeboy@apache.org>
  * <p>
@@ -190,7 +189,7 @@ public class CustomSQLDBReceiver extends Receiver implements Pauseable, Unrecogn
 
     }
 
-    void closeConnection(Connection connection) {
+    void closeConnection() {
         if (connection != null) {
             try {
                 // LogLog.warn("closing the connection. ", new Exception("x"));
@@ -283,8 +282,6 @@ public class CustomSQLDBReceiver extends Receiver implements Pauseable, Unrecogn
 
     class CustomReceiverJob implements Job {
         public void execute() {
-            Connection connection = null;
-
             int oldLastID = lastID;
             try {
                 connection = connectionSource.getConnection();
@@ -297,7 +294,7 @@ public class CustomSQLDBReceiver extends Receiver implements Pauseable, Unrecogn
                 Object message = null;
                 String ndc = null;
                 Hashtable mdc = null;
-                String[] exception = null;
+                String[] throwable = null;
                 String className = null;
                 String methodName = null;
                 String fileName = null;
@@ -358,7 +355,7 @@ public class CustomSQLDBReceiver extends Receiver implements Pauseable, Unrecogn
                         }
                     }
 
-                    exception = new String[] { rs.getString("EXCEPTION") };
+                    throwable = new String[] { rs.getString("THROWABLE") };
                     className = rs.getString("CLASS");
                     methodName = rs.getString("METHOD");
                     fileName = rs.getString("FILE");
@@ -386,9 +383,9 @@ public class CustomSQLDBReceiver extends Receiver implements Pauseable, Unrecogn
                         StringTokenizer tok2 = new StringTokenizer(
                                 propertiesString, ",");
                         while (tok2.countTokens() > 1) {
-                            String name = tok2.nextToken();
+                            String tokenName = tok2.nextToken();
                             String value = tok2.nextToken();
-                            if (name.equals(LOG4J_ID_KEY)) {
+                            if (tokenName.equals(LOG4J_ID_KEY)) {
                                 try {
                                     int thisInt = Integer.parseInt(value);
                                     value = String.valueOf(thisInt);
@@ -398,7 +395,7 @@ public class CustomSQLDBReceiver extends Receiver implements Pauseable, Unrecogn
                                 } catch (Exception e) {
                                 }
                             }
-                            properties.put(name, value);
+                            properties.put(tokenName, value);
                         }
                     }
 
@@ -409,7 +406,7 @@ public class CustomSQLDBReceiver extends Receiver implements Pauseable, Unrecogn
 	                            className, methodName, lineNumber);
 	
 					ThrowableInformation throwableInfo =  new ThrowableInformation(
-		                            exception);
+		                            throwable);
 	
 					properties.putAll(mdc);
 		
@@ -435,7 +432,7 @@ public class CustomSQLDBReceiver extends Receiver implements Pauseable, Unrecogn
                 getLogger()
                         .error("*************Problem receiving events", sqle);
             } finally {
-                closeConnection(connection);
+                closeConnection();
             }
 
             // if paused, loop prior to executing sql query
