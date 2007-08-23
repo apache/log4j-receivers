@@ -62,7 +62,6 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
   String hostname;
   String remoteHost;
   String application;
-  String overrideProperties = "true";
   int timeToLive;
   InetAddress address;
   int port = DEFAULT_PORT;
@@ -263,21 +262,6 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
    */
   public String getApplication() {
     return application;
-  }
-
-  /**
-     The <b>OverrideProperties</b> option allows configurations where the appender does not apply
-     the machinename/appname properties - the properties will be used as provided.
-   */
-  public void setOverrideProperties(String overrideProperties) {
-    this.overrideProperties = overrideProperties;
-  }
-
-  /**
-     Returns value of the <b>OverrideProperties</b> option.
-   */
-  public String getOverrideProperties() {
-    return overrideProperties;
   }
 
   /**

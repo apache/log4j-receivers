@@ -64,7 +64,6 @@ public class UDPAppender extends AppenderSkeleton implements PortBased{
   String remoteHost;
   String application;
   String encoding;
-  String overrideProperties = "true";
   InetAddress address;
   int port = DEFAULT_PORT;
   DatagramSocket outSocket;
@@ -284,21 +283,6 @@ public class UDPAppender extends AppenderSkeleton implements PortBased{
    */
   public String getEncoding() {
     return encoding;
-  }
-
-  /**
-     The <b>OverrideProperties</b> option allows configurations where the appender does not apply
-     the machinename/appname properties - the properties will be used as provided.
-   */
-  public void setOverrideProperties(String overrideProperties) {
-    this.overrideProperties = overrideProperties;
-  }
-
-  /**
-     Returns value of the <b>OverrideProperties</b> option.
-   */
-  public String getOverrideProperties() {
-    return overrideProperties;
   }
 
     /**
