@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.apache.log4j.helpers.Constants;
 import org.apache.log4j.plugins.Pauseable;
 import org.apache.log4j.plugins.Receiver;
 import org.apache.log4j.spi.ComponentBase;
@@ -167,7 +168,7 @@ public class SocketNode13 extends ComponentBase implements Runnable, Pauseable {
         while (true) {
           // read an event from the wire
           event = (LoggingEvent) ois.readObject();
-          event.setProperty("hostname", hostName);
+          event.setProperty(Constants.HOSTNAME_KEY, hostName);
           // store the known remote info in an event property
           event.setProperty("log4j.remoteSourceInfo", remoteInfo);
 
