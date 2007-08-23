@@ -153,8 +153,9 @@ public class SocketNode13 extends ComponentBase implements Runnable, Pauseable {
     }
 
     if (ois != null) {
-      String remoteInfo =
-        socket.getInetAddress().getHostName() + ":" + socket.getPort();
+
+      String hostName = socket.getInetAddress().getHostName();
+      String remoteInfo = hostName + ":" + socket.getPort();
 
       /**
        * notify the listener that the socket has been
@@ -166,7 +167,7 @@ public class SocketNode13 extends ComponentBase implements Runnable, Pauseable {
         while (true) {
           // read an event from the wire
           event = (LoggingEvent) ois.readObject();
-
+          event.setProperty("hostname", hostName);
           // store the known remote info in an event property
           event.setProperty("log4j.remoteSourceInfo", remoteInfo);
 

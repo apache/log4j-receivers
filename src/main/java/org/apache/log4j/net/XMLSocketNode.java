@@ -123,9 +123,9 @@ public class XMLSocketNode extends ComponentBase implements Runnable {
     }
 
     if (is != null) {
-      String remoteInfo =
-        socket.getInetAddress().getHostName() + ":" + socket.getPort();
-
+        String hostName = socket.getInetAddress().getHostName();
+        String remoteInfo = hostName + ":" + socket.getPort();
+    	
       try {
         //read data from the socket
         //it's up to the individual decoder to handle incomplete event data
@@ -144,12 +144,7 @@ public class XMLSocketNode extends ComponentBase implements Runnable {
 
             while (iter.hasNext()) {
               LoggingEvent e = (LoggingEvent) iter.next();
-
-              //if machinename property was not set (the case if properties
-              //not supported by the DTD), use remoteinfo as machine name
-              if (e.getProperty(Constants.HOSTNAME_KEY) == null) {
-                e.setProperty(Constants.HOSTNAME_KEY, remoteInfo);
-              }
+              e.setProperty(Constants.HOSTNAME_KEY, hostName);
 
               // store the known remote info in an event property
               e.setProperty("log4j.remoteSourceInfo", remoteInfo);
