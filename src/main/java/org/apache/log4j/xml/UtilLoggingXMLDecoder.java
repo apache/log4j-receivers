@@ -63,8 +63,7 @@ public class UtilLoggingXMLDecoder implements Decoder {
    * Document prolog.
    */
   private static final String BEGIN_PART =
-    "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
-    + "<!DOCTYPE log SYSTEM \"logger.dtd\"><log>";
+    "<log>";
     /**
      * Document close.
      */
@@ -163,7 +162,6 @@ public class UtilLoggingXMLDecoder implements Decoder {
 
       InputSource inputSource =
         new InputSource(new StringReader(buf.toString()));
-      inputSource.setSystemId("dummy://logger.dtd");
       document = docBuilder.parse(inputSource);
     } catch (Exception e) {
       e.printStackTrace();

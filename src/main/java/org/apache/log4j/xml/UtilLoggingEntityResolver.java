@@ -17,21 +17,16 @@
 
 package org.apache.log4j.xml;
 
-import org.apache.log4j.LogManager;
 import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
 
-import java.io.InputStream;
+import java.io.ByteArrayInputStream;
 
 
 /**
  * An {@link EntityResolver} specifically designed to return
- * <code>java 1.4's logging dtd, logger.dtd</code>
- * which is embedded within the log4j jar file.  Based on EntityResolver.
+ * an empty InputSource for logger.dtd.
  *
- *
- * @author Paul Austin
- * @author Scott Deboy (sdeboy@apache.org)
  */
 public final class UtilLoggingEntityResolver implements EntityResolver {
 
@@ -47,17 +42,7 @@ public final class UtilLoggingEntityResolver implements EntityResolver {
   public InputSource resolveEntity(final String publicId,
                                    final String systemId) {
     if (systemId.endsWith("logger.dtd")) {
-      Class clazz = getClass();
-      InputStream in =
-        clazz.getResourceAsStream("/org/apache/log4j/xml/logger.dtd");
-      if (in == null) {
-        LogManager.getLogger(UtilLoggingEntityResolver.class).error(
-          "Could not find [logger.dtd]. Used [" + clazz.getClassLoader()
-          + "] class loader in the search.");
-        return null;
-      } else {
-        return new InputSource(in);
-      }
+      return new InputSource(new ByteArrayInputStream(new byte[0]));
     } else {
       return null;
     }
