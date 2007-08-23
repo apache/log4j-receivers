@@ -20,6 +20,7 @@ package org.apache.log4j.net;
 import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.helpers.Constants;
 import org.apache.log4j.spi.LoggingEvent;
+import org.apache.log4j.xml.XMLLayout;
 import org.apache.log4j.helpers.LogLog;
 
 import java.io.IOException;
@@ -193,15 +194,9 @@ public class UDPAppender extends AppenderSkeleton implements PortBased{
     }
 
     if (outSocket != null) {
-      //if the values already exist, don't set (useful when forwarding from a simplesocketserver
-      if (
-        (overrideProperties != null)
-          && overrideProperties.equalsIgnoreCase("true")) {
-        event.setProperty(Constants.HOSTNAME_KEY, hostname);
-
-        if (application != null) {
-          event.setProperty(Constants.APPLICATION_KEY, application);
-        }
+      event.setProperty(Constants.HOSTNAME_KEY, hostname);
+      if (application != null) {
+        event.setProperty(Constants.APPLICATION_KEY, application);
       }
 
       try {

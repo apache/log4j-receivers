@@ -165,16 +165,11 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
 	}
 
     if (outSocket != null) {
-      //if the values already exist, don't set (useful when forwarding from a simplesocketserver
-      if (
-        (overrideProperties != null)
-          && overrideProperties.equalsIgnoreCase("true")) {
         event.setProperty(Constants.HOSTNAME_KEY, hostname);
 
         if (application != null) {
           event.setProperty(Constants.APPLICATION_KEY, application);
         }
-      }
       
 		if(locationInfo) {
 		   event.getLocationInformation();

@@ -39,6 +39,13 @@ public class PropertyRewritePolicy implements RewritePolicy {
     public PropertyRewritePolicy() {
     }
 
+    /**
+     * Set a string representing the property name/value pairs.
+     * 
+     * Form: propname1=propvalue1,propname2=propvalue2
+     * 
+     * @param props
+     */
     public void setProperties(String props) {
         Map hashTable = new HashMap();
         StringTokenizer pairs = new StringTokenizer(props, ",");
