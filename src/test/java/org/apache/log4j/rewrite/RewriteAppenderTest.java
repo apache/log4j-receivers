@@ -24,6 +24,7 @@ import org.apache.log4j.xml.*;
 import java.io.InputStream;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.TreeMap;
 import java.util.Hashtable;
 import javax.xml.parsers.*;
 import org.w3c.dom.*;
@@ -61,7 +62,7 @@ public class RewriteAppenderTest extends TestCase {
         logger.info("Message 0");
         MDC.put("p1", "Hola");
 
-        Map msg = new HashMap();
+        Map msg = new TreeMap();
         msg.put("p1", "Hello");
         msg.put("p2", "World");
         msg.put("x1", "Mundo");
