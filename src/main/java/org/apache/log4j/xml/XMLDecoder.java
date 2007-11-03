@@ -37,9 +37,9 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.spi.Decoder;
+import org.apache.log4j.spi.LocationInfo;
 import org.apache.log4j.spi.LoggingEvent;
 import org.apache.log4j.spi.ThrowableInformation;
-import org.apache.log4j.spi.LocationInfo;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -56,17 +56,23 @@ import org.xml.sax.InputSource;
  * NOTE:  Only a single LoggingEvent is returned from the decode method
  * even though the DTD supports multiple events nested in an eventSet.
  *
- *
+ * NOTE: This class has been created on the assumption that all XML log files
+ * are encoding in UTF-8 encoding. There is no current support for any other 
+ * encoding format at this time.
+ * 
  * @author Scott Deboy (sdeboy@apache.org)
  * @author Paul Smith (psmith@apache.org)
  *
  */
 public class XMLDecoder implements Decoder {
+    
+  private static final String ENCODING = "UTF-8";
+    
     /**
      * Document prolog.
      */
   private static final String BEGINPART =
-    "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
+    "<?xml version=\"1.0\" encoding=\"" + ENCODING + "\" ?>"
     + "<!DOCTYPE log4j:eventSet SYSTEM \"http://localhost/log4j.dtd\">"
     + "<log4j:eventSet version=\"1.2\" "
     + "xmlns:log4j=\"http://jakarta.apache.org/log4j/\">";
@@ -183,9 +189,9 @@ public class XMLDecoder implements Decoder {
     if (owner != null) {
       reader = new LineNumberReader(new InputStreamReader(
               new ProgressMonitorInputStream(owner,
-                      "Loading " + url , url.openStream())));
+                      "Loading " + url , url.openStream()), ENCODING));
     } else {
-      reader = new LineNumberReader(new InputStreamReader(url.openStream()));
+      reader = new LineNumberReader(new InputStreamReader(url.openStream(), ENCODING));
     }
 
     Vector v = new Vector();
