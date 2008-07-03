@@ -119,11 +119,12 @@ import org.w3c.dom.Element;
  * or save the events to XML for later analysis.
  * <p>
  * Here is a complete MySQL SQL statement which can be used to provide events to
- * Chainsaw:
+ * Chainsaw (note how in the example below, there is no column in logtable representing the throwable, so an
+ * empty string is passed in and an ALIAS is still defined):
  * <p>
- * select logger as LOGGER, timestamp as TIMESTAMP, level as LEVEL, thread as
- * THREAD, message as MESSAGE, ndc as NDC, mdc as MDC, class as CLASS, method as
- * METHOD, file as FILE, line as LINE,
+ * select myloggercolumn as LOGGER, mytimestampcolumn as TIMESTAMP, mylevelcolumn as LEVEL, mythreadcolumn as
+ * THREAD, mymessagecolumn as MESSAGE, myndccolumn as NDC, mymdccolumn as MDC, myclasscolumn as CLASS, mymethodcolumn as
+ * METHOD, myfilecolumn as FILE, mylinecolumn as LINE,
  * concat("{{application,databaselogs,hostname,mymachine, log4jid,",
  * COUNTER,"}}") as PROPERTIES, "" as THROWABLE from logtable
  * <p>
