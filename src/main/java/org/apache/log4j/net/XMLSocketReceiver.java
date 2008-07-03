@@ -34,8 +34,16 @@ import org.apache.log4j.spi.LoggingEvent;
   socket and "posts" it to a LoggerRepository as if the event were
   generated locally. This class is designed to receive events from
   the XMLSocketAppender class (or classes that send compatible events).
-
-  <p>Once the event has been "posted", it will be handled by the
+  <p>
+  This receiver supports log files created using log4j's XMLLayout, as well as java.util.logging
+  XMLFormatter (via the org.apache.log4j.spi.Decoder interface).
+  <p>
+  By default, log4j's XMLLayout is supported (no need to specify a decoder in that case).
+  <p>
+  To configure this receiver to support java.util.logging's XMLFormatter, specify a 'decoder' param
+  of org.apache.log4j.xml.UtilLoggingXMLDecoder.
+  <p>
+  Once the event has been "posted", it will be handled by the
   appenders currently configured in the LoggerRespository.
 
   @author Mark Womack
@@ -81,6 +89,9 @@ public class XMLSocketReceiver extends Receiver implements Runnable, PortBased, 
     return decoder;
   }
 
+  /**
+   *Specify the class name implementing org.apache.log4j.spi.Decoder that can process the file.
+   */
   public void setDecoder(String _decoder) {
     decoder = _decoder;
   }

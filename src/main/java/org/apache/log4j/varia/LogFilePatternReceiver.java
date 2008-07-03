@@ -41,9 +41,9 @@ import org.apache.log4j.helpers.Constants;
 import org.apache.log4j.plugins.Receiver;
 import org.apache.log4j.rule.ExpressionRule;
 import org.apache.log4j.rule.Rule;
+import org.apache.log4j.spi.LocationInfo;
 import org.apache.log4j.spi.LoggingEvent;
 import org.apache.log4j.spi.ThrowableInformation;
-import org.apache.log4j.spi.LocationInfo;
 import org.apache.oro.text.perl.Perl5Util;
 import org.apache.oro.text.regex.MalformedPatternException;
 import org.apache.oro.text.regex.MatchResult;
@@ -63,7 +63,7 @@ import org.apache.oro.text.regex.Perl5Matcher;
  * <p>
  * <b>Features:</b><br>
  * - specify the URL of the log file to be processed<br>
- * - specify the timestamp format in the file (if one exists)<br>
+ * - specify the timestamp format in the file (if one exists, using patterns from {@link java.text.SimpleDateFormat})<br>
  * - specify the pattern (logFormat) used in the log file using keywords, a wildcard character (*) and fixed text<br>
  * - 'tail' the file (allows the contents of the file to be continually read and new events processed)<br>
  * - supports the parsing of multi-line messages and exceptions
@@ -303,7 +303,7 @@ private boolean useCurrentThread;
   }
 
   /**
-   * Mutator
+   * Mutator.  Specify a pattern from {@link java.text.SimpleDateFormat}
    * 
    * @param timestampFormat
    */
