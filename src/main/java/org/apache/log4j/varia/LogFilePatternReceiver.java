@@ -108,7 +108,7 @@ import org.apache.oro.text.regex.Perl5Matcher;
  * <p>
  * Note the * - it can be used to ignore a single word or sequence of words in the log file
  * (in order for the wildcard to ignore a sequence of words, the text being ignored must be
- *  followed by some delimiter, like '-' or '[') - ndc is being ignored in this example.
+ *  followed by some delimiter, like '-' or '[') - ndc is being ignored in the following example.
  * <p>
  * Assign a filterExpression in order to only process events which match a filter.
  * If a filterExpression is not assigned, all events are processed.
@@ -124,7 +124,7 @@ import org.apache.oro.text.regex.Perl5Matcher;
  *<p>
  * <b>Example receiver configuration settings</b> (add these as params, specifying a LogFilePatternReceiver 'plugin'):<br>
  * param: "timestampFormat" value="yyyy-MM-d HH:mm:ss,SSS"<br>
- * param: "logFormat" value="RELATIVETIME [THREAD] LEVEL LOGGER * - MESSAGE"<br>
+ * param: "logFormat" value="PROP(RELATIVETIME) [THREAD] LEVEL LOGGER * - MESSAGE"<br>
  * param: "fileURL" value="file:///c:/events.log"<br>
  * param: "tailing" value="true"
  *<p>
@@ -158,8 +158,8 @@ public class LogFilePatternReceiver extends Receiver {
   
   //all lines other than first line of exception begin with tab followed by 'at' followed by text
   private static final String EXCEPTION_PATTERN = "\tat.*";
-  private static final String REGEXP_DEFAULT_WILDCARD = ".+?";
-  private static final String REGEXP_GREEDY_WILDCARD = ".+";
+  private static final String REGEXP_DEFAULT_WILDCARD = ".*?";
+  private static final String REGEXP_GREEDY_WILDCARD = ".*";
   private static final String PATTERN_WILDCARD = "*";
   private static final String DEFAULT_GROUP = "(" + REGEXP_DEFAULT_WILDCARD + ")";
   private static final String GREEDY_GROUP = "(" + REGEXP_GREEDY_WILDCARD + ")";
@@ -782,21 +782,23 @@ private boolean useCurrentThread;
     return event;
   }
 
+  /*
   public static void main(String[] args) {
-    /*
+    org.apache.log4j.Logger rootLogger = org.apache.log4j.Logger.getRootLogger();
+    org.apache.log4j.ConsoleAppender appender = new org.apache.log4j.ConsoleAppender(new org.apache.log4j.SimpleLayout());
+    appender.setName("console");
+    rootLogger.addAppender(appender);
     LogFilePatternReceiver test = new LogFilePatternReceiver();
-    test.setLogFormat("TIMESTAMP LEVEL [THREAD] LOGGER (FILE:LINE) - MESSAGE");
-    test.setTailing(true);
+    org.apache.log4j.spi.LoggerRepository repo = new org.apache.log4j.LoggerRepositoryExImpl(org.apache.log4j.LogManager.getLoggerRepository());
+    test.setLoggerRepository(repo);
+    test.setLogFormat("PROP(RELATIVETIME) [THREAD] LEVEL LOGGER * - MESSAGE");
+    test.setTailing(false);
+    test.setTimestampFormat("yyyy-MM-d HH:mm:ss,SSS");
     test.setFileURL("file:///C:/log/test.log");
     test.initialize();
-    try {
-      test.process(new InputStreamReader(new URL(test.getFileURL())
-          .openStream()));
-    } catch (IOException ioe) {
-      ioe.printStackTrace();
-    }
-    */
+    test.activateOptions();
   }
+  */
 
   /**
    * Close the reader. 
