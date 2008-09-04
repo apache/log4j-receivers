@@ -61,6 +61,10 @@ public class SocketNode13 extends ComponentBase implements Runnable, Pauseable {
      */
   private boolean paused;
     /**
+     * Closed state.
+     */
+  private boolean closed;
+    /**
      * Socket.
      */
   private Socket socket;
@@ -165,7 +169,7 @@ public class SocketNode13 extends ComponentBase implements Runnable, Pauseable {
       fireSocketOpened(remoteInfo);
 
       try {
-        while (true) {
+        while (!isClosed()) {
           // read an event from the wire
           event = (LoggingEvent) ois.readObject();
           event.setProperty(Constants.HOSTNAME_KEY, hostName);
@@ -173,7 +177,7 @@ public class SocketNode13 extends ComponentBase implements Runnable, Pauseable {
           event.setProperty("log4j.remoteSourceInfo", remoteInfo);
 
           // if configured with a receiver, tell it to post the event
-          if (!isPaused()) {
+          if (!isPaused() && !isClosed()) {
             if ((receiver != null)) {
               receiver.doPost(event);
 
@@ -222,7 +226,7 @@ public class SocketNode13 extends ComponentBase implements Runnable, Pauseable {
     }
 
     // send event to listener, if configured
-    if (listenerList.size() > 0) {
+    if (listenerList.size() > 0 && !isClosed()) {
       fireSocketClosedEvent(listenerException);
     }
   }
@@ -273,5 +277,23 @@ public class SocketNode13 extends ComponentBase implements Runnable, Pauseable {
      */
   public boolean isPaused() {
     return this.paused;
+  }
+
+    /**
+     * Close the node and underlying socket
+     */
+  public void close() throws IOException {
+    getLogger().debug("closing socket");
+    this.closed = true;
+    socket.close();
+    fireSocketClosedEvent(null);
+  }
+  
+    /**
+     * Get if node is closed.
+     * @return true if closed.
+     */
+  public boolean isClosed() {
+    return this.closed;
   }
 }

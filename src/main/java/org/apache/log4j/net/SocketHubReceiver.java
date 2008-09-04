@@ -76,7 +76,7 @@ extends Receiver implements SocketNodeEventListener, PortBased {
     /**
      * Socket.
      */
-  protected Socket socket;
+  protected SocketNode13 socketNode;
 
     /**
      * Listener list.
@@ -255,13 +255,14 @@ extends Receiver implements SocketNodeEventListener, PortBased {
 
     // close the socket
     try {
-      if (socket != null) {
-        socket.close();
+      if (socketNode != null) {
+        socketNode.close();
+        socketNode = null;
       }
     } catch (Exception e) {
+      getLogger().info("Excpetion closing socket", e);
       // ignore for now
     }
-    socket = null;
 
     // stop the connector
     if (connector != null) {
@@ -276,11 +277,14 @@ extends Receiver implements SocketNodeEventListener, PortBased {
    @param e exception not used.
    */
   public void socketClosedEvent(final Exception e) {
+    // if it is a non-normal closed event
     // we clear the connector object here
     // so that it actually does reconnect if the
     // remote socket dies.
-    connector = null;
-    fireConnector(true);
+    if (e != null) {
+      connector = null;
+      fireConnector(true);
+    }
   }
 
     /**
@@ -303,18 +307,17 @@ extends Receiver implements SocketNodeEventListener, PortBased {
      */
   private synchronized void setSocket(final Socket newSocket) {
     connector = null;
-    socket = newSocket;
-    SocketNode13 node = new SocketNode13(socket, this);
-    node.addSocketNodeEventListener(this);
+    socketNode = new SocketNode13(newSocket, this);
+    socketNode.addSocketNodeEventListener(this);
 
     synchronized (listenerList) {
         for (Iterator iter = listenerList.iterator(); iter.hasNext();) {
             SocketNodeEventListener listener =
                     (SocketNodeEventListener) iter.next();
-            node.addSocketNodeEventListener(listener);
+            socketNode.addSocketNodeEventListener(listener);
         }
     }
-    new Thread(node).start();
+    new Thread(socketNode).start();
   }
 
   /**
