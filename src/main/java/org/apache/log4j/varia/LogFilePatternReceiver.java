@@ -157,7 +157,7 @@ public class LogFilePatternReceiver extends Receiver {
   private static final String DEFAULT_HOST = "file";
   
   //all lines other than first line of exception begin with tab followed by 'at' followed by text
-  private static final String EXCEPTION_PATTERN = "\tat.*";
+  private static final String EXCEPTION_PATTERN = "^\\s+at.*";
   private static final String REGEXP_DEFAULT_WILDCARD = ".*?";
   private static final String REGEXP_GREEDY_WILDCARD = ".*";
   private static final String PATTERN_WILDCARD = "*";
@@ -177,6 +177,7 @@ public class LogFilePatternReceiver extends Receiver {
   private String path;
   private boolean tailing;
   private String filterExpression;
+  private long waitMillis = 2000; //default 2 seconds
 
   private Perl5Util util = null;
   private Perl5Compiler exceptionCompiler = null;
@@ -192,11 +193,14 @@ public class LogFilePatternReceiver extends Receiver {
   private String regexp;
   private Reader reader;
   private Pattern regexpPattern;
+  private Pattern exceptionPattern;
   private String timestampPatternText;
 
-private boolean useCurrentThread;
+  private boolean useCurrentThread;
+  public static final int MISSING_FILE_RETRY_MILLIS = 10000;
+  private boolean appendNonMatches;
 
-  public LogFilePatternReceiver() {
+    public LogFilePatternReceiver() {
     keywords.add(TIMESTAMP);
     keywords.add(LOGGER);
     keywords.add(LEVEL);
@@ -207,6 +211,12 @@ private boolean useCurrentThread;
     keywords.add(METHOD);
     keywords.add(MESSAGE);
     keywords.add(NDC);
+    exceptionCompiler = new Perl5Compiler();
+    try {
+        exceptionPattern = exceptionCompiler.compile(EXCEPTION_PATTERN);
+    } catch (MalformedPatternException mpe) {
+        //shouldn't happen
+    }
   }
 
   /**
@@ -225,6 +235,22 @@ private boolean useCurrentThread;
    */
   public void setFileURL(String fileURL) {
     this.fileURL = fileURL;
+  }
+
+  /**
+   * Accessor
+   * @return append non matches
+   */
+  public boolean isAppendNonMatches() {
+      return appendNonMatches;
+  }
+
+  /**
+   * Mutator
+   * @param appendNonMatches
+   */
+  public void setAppendNonMatches(boolean appendNonMatches) {
+      this.appendNonMatches = appendNonMatches;
   }
 
   /**
@@ -292,9 +318,9 @@ private boolean useCurrentThread;
     return logFormat;
   }
 
-  /**
+    /**
    * Mutator
-   * 
+   *
    * @param logFormat
    *          the format
    */
@@ -302,18 +328,18 @@ private boolean useCurrentThread;
     this.logFormat = logFormat;
   }
 
-  /**
+    /**
    * Mutator.  Specify a pattern from {@link java.text.SimpleDateFormat}
-   * 
+   *
    * @param timestampFormat
    */
   public void setTimestampFormat(String timestampFormat) {
     this.timestampFormat = timestampFormat;
   }
 
-  /**
+    /**
    * Accessor
-   * 
+   *
    * @return timestamp format
    */
   public String getTimestampFormat() {
@@ -321,54 +347,65 @@ private boolean useCurrentThread;
   }
 
   /**
+   * Accessor
+   * @return millis between retrieves of content
+   */
+  public long getWaitMillis() {
+    return waitMillis;
+  }
+
+  /**
+   * Mutator
+   * @param waitMillis
+   */
+  public void setWaitMillis(long waitMillis) {
+    this.waitMillis = waitMillis;
+  }
+
+    /**
    * Walk the additionalLines list, looking for the EXCEPTION_PATTERN.
    * <p>
-   * Return the index of the first matched line minus 1 
-   * (the match is the 2nd line of an exception)
+   * Return the index of the first matched line
+   * (the match may be the 1st line of an exception)
    * <p>
    * Assumptions: <br>
    * - the additionalLines list may contain both message and exception lines<br>
    * - message lines are added to the additionalLines list and then
-   * exception lines (all message lines occur in the list prior to all 
+   * exception lines (all message lines occur in the list prior to all
    * exception lines)
-   * 
+   *
    * @return -1 if no exception line exists, line number otherwise
    */
   private int getExceptionLine() {
-    try {
-      Pattern exceptionPattern = exceptionCompiler.compile(EXCEPTION_PATTERN);
-      for (int i = 0; i < additionalLines.size(); i++) {
-        if (exceptionMatcher.matches((String) additionalLines.get(i), exceptionPattern)) {
-          return i - 1;
-        }
+    for (int i = 0; i < additionalLines.size(); i++) {
+      if (exceptionMatcher.matches((String) additionalLines.get(i), exceptionPattern)) {
+        return i;
       }
-    } catch (MalformedPatternException mpe) {
-      getLogger().warn("Bad pattern: " + EXCEPTION_PATTERN);
     }
     return -1;
   }
 
-  /**
+    /**
    * Combine all message lines occuring in the additionalLines list, adding
    * a newline character between each line
    * <p>
    * the event will already have a message - combine this message
-   * with the message lines in the additionalLines list 
+   * with the message lines in the additionalLines list
    * (all entries prior to the exceptionLine index)
-   * 
+   *
    * @param firstMessageLine primary message line
    * @param exceptionLine index of first exception line
    * @return message
    */
   private String buildMessage(String firstMessageLine, int exceptionLine) {
-    if (additionalLines.size() == 0 || exceptionLine == 0) {
+    if (additionalLines.size() == 0) {
       return firstMessageLine;
     }
     StringBuffer message = new StringBuffer();
     if (firstMessageLine != null) {
       message.append(firstMessageLine);
     }
-      
+
     int linesToProcess = (exceptionLine == -1?additionalLines.size(): exceptionLine);
 
     for (int i = 0; i < linesToProcess; i++) {
@@ -378,12 +415,12 @@ private boolean useCurrentThread;
     return message.toString();
   }
 
-  /**
-   * Combine all exception lines occuring in the additionalLines list into a 
+    /**
+   * Combine all exception lines occuring in the additionalLines list into a
    * String array
    * <p>
    * (all entries equal to or greater than the exceptionLine index)
-   * 
+   *
    * @param exceptionLine index of first exception line
    * @return exception
    */
@@ -391,19 +428,19 @@ private boolean useCurrentThread;
     if (exceptionLine == -1) {
       return emptyException;
     }
-    String[] exception = new String[additionalLines.size() - exceptionLine];
-    for (int i = 0; i < additionalLines.size() - exceptionLine; i++) {
+    String[] exception = new String[additionalLines.size() - exceptionLine - 1];
+    for (int i = 0; i < exception.length; i++) {
       exception[i] = (String) additionalLines.get(i + exceptionLine);
     }
     return exception;
   }
 
-  /**
-   * Construct a logging event from currentMap and additionalLines 
+    /**
+   * Construct a logging event from currentMap and additionalLines
    * (additionalLines contains multiple message lines and any exception lines)
    * <p>
    * CurrentMap and additionalLines are cleared in the process
-   * 
+   *
    * @return event
    */
   private LoggingEvent buildEvent() {
@@ -421,7 +458,7 @@ private boolean useCurrentThread;
     String[] exception = buildException(exceptionLine);
 
     //messages are listed before exceptions in additionallines
-    if (additionalLines.size() > 0 && exceptionLine != 0) {
+    if (additionalLines.size() > 0 && exception.length > 0) {
       currentMap.put(MESSAGE, buildMessage((String) currentMap.get(MESSAGE),
           exceptionLine));
     }
@@ -431,17 +468,16 @@ private boolean useCurrentThread;
     return event;
   }
 
-  /**
+    /**
    * Read, parse and optionally tail the log file, converting entries into logging events.
-   * 
-   * A runtimeException is thrown if the logFormat pattern is malformed 
+   *
+   * A runtimeException is thrown if the logFormat pattern is malformed
    * according to ORO's Perl5Compiler.
-   * 
-   * @param unbufferedReader
+   *
+   * @param bufferedReader
    * @throws IOException
    */
   protected void process(BufferedReader bufferedReader) throws IOException {
-
         Perl5Matcher eventMatcher = new Perl5Matcher();
         String line;
         while ((line = bufferedReader.readLine()) != null) {
@@ -454,10 +490,28 @@ private boolean useCurrentThread;
                     }
                 }
                 currentMap.putAll(processEvent(eventMatcher.getMatch()));
-            } else {
-                //getLogger().debug("line doesn't match pattern - must be ")
-                //may be an exception or additional message lines
+            } else if (eventMatcher.matches(line, exceptionPattern)) {
+                //an exception line
                 additionalLines.add(line);
+            } else {
+                //neither...either post an event with the line or append as additional lines
+                //if this was a logging event with multiple lines, each line will show up as its own event instead of being
+                //appended as multiple lines on the same event..
+                //choice is to have each non-matching line show up as its own line, or append them all to a previous event
+                if (appendNonMatches) {
+                    //build an event from the previous match (held in current map)
+                    if (currentMap.size() > 0) {
+                        LoggingEvent event = buildEvent();
+                        if (event != null) {
+                            if (passesExpression(event)) {
+                              doPost(event);
+                            }
+                        }
+                    }
+                    currentMap.put(MESSAGE, line);
+                } else {
+                    additionalLines.add(line);
+                }
             }
         }
 
@@ -483,11 +537,11 @@ private boolean useCurrentThread;
         }
     }
 
-  /**
+    /**
    * Helper method that supports the evaluation of the expression
-   * 
+   *
    * @param event
-   * @return true if expression isn't set, or the result of the evaluation otherwise 
+   * @return true if expression isn't set, or the result of the evaluation otherwise
    */
   private boolean passesExpression(LoggingEvent event) {
     if (event != null) {
@@ -498,12 +552,12 @@ private boolean useCurrentThread;
     return true;
   }
 
-  /**
+    /**
    * Convert the ORO match into a map.
    * <p>
    * Relies on the fact that the matchingKeywords list is in the same
    * order as the groups in the regular expression
-   *  
+   *
    * @param result
    * @return map
    */
@@ -515,28 +569,28 @@ private boolean useCurrentThread;
     }
     return map;
   }
-  
-  /**
+
+    /**
    * Helper method that will convert timestamp format to a pattern
-   * 
-   * 
+   *
+   *
    * @return string
    */
   private String convertTimestamp() {
     return util.substitute("s/("+VALID_DATEFORMAT_CHAR_PATTERN+")+/\\\\w+/g", timestampFormat);
   }
-  
-  protected void setHost(String host) {
+
+    protected void setHost(String host) {
 	  this.host = host;
   }
-  
-  protected void setPath(String path) {
+
+    protected void setPath(String path) {
 	  this.path = path;
   }
 
-  /**
+    /**
    * Build the regular expression needed to parse log entries
-   *  
+   *
    */
   protected void initialize() {
 	if (host == null && path == null) {
@@ -550,12 +604,12 @@ private boolean useCurrentThread;
 		}
 	}
 	if (host == null || host.trim().equals("")) {
-		host = DEFAULT_HOST; 
+		host = DEFAULT_HOST;
 	}
 	if (path == null || path.trim().equals("")) {
 		path = fileURL;
 	}
-	
+
     util = new Perl5Util();
     exceptionCompiler = new Perl5Compiler();
     exceptionMatcher = new Perl5Matcher();
@@ -563,7 +617,7 @@ private boolean useCurrentThread;
     currentMap = new HashMap();
     additionalLines = new ArrayList();
     matchingKeywords = new ArrayList();
-    
+
     if (timestampFormat != null) {
       dateFormat = new SimpleDateFormat(timestampFormat);
       timestampPatternText = convertTimestamp();
@@ -582,11 +636,11 @@ private boolean useCurrentThread;
     String newPattern = logFormat;
 
     /*
-     * examine pattern, adding properties to an index-based map where the key is the 
+     * examine pattern, adding properties to an index-based map where the key is the
      * numeric offset from the start of the pattern so that order can be preserved
-     * 
-     * Replaces PROP(X) definitions in the pattern with the short version X, so 
-     * that the name can be used as the event property later 
+     *
+     * Replaces PROP(X) definitions in the pattern with the short version X, so
+     * that the name can be used as the event property later
      */
     int index = 0;
     int currentPosition = 0;
@@ -616,7 +670,7 @@ private boolean useCurrentThread;
     /*
      * we're using a treemap, so the index will be used as the key to ensure
      * keywords are ordered correctly
-     * 
+     *
      * examine pattern, adding keywords to an index-based map patterns can
      * contain only one of these per entry...properties are the only 'keyword'
      * that can occur multiple times in an entry
@@ -654,13 +708,13 @@ private boolean useCurrentThread;
     getLogger().debug("regexp is " + regexp);
   }
 
-  /**
+    /**
    * Helper method that will globally replace a section of text
-   * 
+   *
    * @param pattern
    * @param replacement
-   * @param input 
-   * 
+   * @param input
+   *
    * @return string
    */
   private String replace(String pattern, String replacement, String input) {
@@ -668,10 +722,10 @@ private boolean useCurrentThread;
         + Perl5Compiler.quotemeta(replacement) + "/g", input);
   }
 
-  /**
-   * Some perl5 characters may occur in the log file format.  
+    /**
+   * Some perl5 characters may occur in the log file format.
    * Escape these characters to prevent parsing errors.
-   * 
+   *
    * @param input
    * @return string
    */
@@ -687,12 +741,12 @@ private boolean useCurrentThread;
     return input;
   }
 
-  /**
+    /**
    * Convert a keyword-to-values map to a LoggingEvent
-   * 
+   *
    * @param fieldMap
    * @param exception
-   * 
+   *
    * @return logging event
    */
   private LoggingEvent convertToEvent(Map fieldMap, String[] exception) {
@@ -782,26 +836,25 @@ private boolean useCurrentThread;
     return event;
   }
 
-  /*
-  public static void main(String[] args) {
-    org.apache.log4j.Logger rootLogger = org.apache.log4j.Logger.getRootLogger();
-    org.apache.log4j.ConsoleAppender appender = new org.apache.log4j.ConsoleAppender(new org.apache.log4j.SimpleLayout());
-    appender.setName("console");
-    rootLogger.addAppender(appender);
-    LogFilePatternReceiver test = new LogFilePatternReceiver();
-    org.apache.log4j.spi.LoggerRepository repo = new org.apache.log4j.LoggerRepositoryExImpl(org.apache.log4j.LogManager.getLoggerRepository());
-    test.setLoggerRepository(repo);
-    test.setLogFormat("PROP(RELATIVETIME) [THREAD] LEVEL LOGGER * - MESSAGE");
-    test.setTailing(false);
-    test.setTimestampFormat("yyyy-MM-d HH:mm:ss,SSS");
-    test.setFileURL("file:///C:/log/test.log");
-    test.initialize();
-    test.activateOptions();
-  }
-  */
+//  public static void main(String[] args) {
+//    org.apache.log4j.Logger rootLogger = org.apache.log4j.Logger.getRootLogger();
+//    org.apache.log4j.ConsoleAppender appender = new org.apache.log4j.ConsoleAppender(new org.apache.log4j.SimpleLayout());
+//    appender.setName("console");
+//    rootLogger.addAppender(appender);
+//    LogFilePatternReceiver test = new LogFilePatternReceiver();
+//    org.apache.log4j.spi.LoggerRepository repo = new org.apache.log4j.LoggerRepositoryExImpl(org.apache.log4j.LogManager.getLoggerRepository());
+//    test.setLoggerRepository(repo);
+//    test.setLogFormat("PROP(RELATIVETIME) [THREAD] LEVEL LOGGER * - MESSAGE");
+//    test.setTailing(false);
+//    test.setAppendNonMatches(true);
+//    test.setTimestampFormat("yyyy-MM-d HH:mm:ss,SSS");
+//    test.setFileURL("file:///C:/log/test.log");
+//    test.initialize();
+//    test.activateOptions();
+//  }
 
-  /**
-   * Close the reader. 
+    /**
+   * Close the reader.
    */
   public void shutdown() {
     try {
@@ -814,50 +867,50 @@ private boolean useCurrentThread;
     }
   }
 
-  /**
+    /**
    * Read and process the log file.
    */
   public void activateOptions() {
 	Runnable runnable = new Runnable() {
-	             public void run() {
-                initialize();
-                while (reader == null) {
-                    getLogger().info("attempting to load file: " + getFileURL());
-                    try {
-                        reader = new InputStreamReader(new URL(getFileURL()).openStream());
-                    } catch (FileNotFoundException fnfe) {
-                        getLogger().info("file not available - will try again in 10 seconds");
-                        synchronized (this) {
-                            try {
-                                wait(10000);
-                            } catch (InterruptedException ie) {}
-                        }
-                    } catch (IOException ioe) {
-                        getLogger().warn("unable to load file", ioe);
-                        return;
-                    }
-                }
+	  public void run() {
+        initialize();
+            while (reader == null) {
+                getLogger().info("attempting to load file: " + getFileURL());
                 try {
-                    BufferedReader bufferedReader = new BufferedReader(reader);
-                    createPattern();
-                    do {
-                        getLogger().debug("tailing file: " + tailing);
-                        process(bufferedReader);
+                    reader = new InputStreamReader(new URL(getFileURL()).openStream());
+                } catch (FileNotFoundException fnfe) {
+                    getLogger().info("file not available - will try again");
+                    synchronized (this) {
                         try {
-                            synchronized (this) {
-                                wait(2000);
-                            }
-                        } catch (InterruptedException ie) {
-                        }
-                    } while (tailing);
-
+                            wait(MISSING_FILE_RETRY_MILLIS);
+                        } catch (InterruptedException ie) {}
+                    }
                 } catch (IOException ioe) {
-                    //io exception - probably shut down
-                    getLogger().info("stream closed");
+                    getLogger().warn("unable to load file", ioe);
+                    return;
                 }
-                getLogger().debug("processing " + fileURL + " complete");
-                shutdown();
             }
+            try {
+                BufferedReader bufferedReader = new BufferedReader(reader);
+                createPattern();
+                do {
+                    getLogger().debug("tailing file: " + tailing);
+                    process(bufferedReader);
+                    try {
+                        synchronized (this) {
+                            wait(waitMillis);
+                        }
+                    } catch (InterruptedException ie) {
+                    }
+                } while (tailing);
+
+            } catch (IOException ioe) {
+                //io exception - probably shut down
+                getLogger().info("stream closed");
+            }
+            getLogger().debug("processing " + fileURL + " complete");
+            shutdown();
+          }
         };
         if(useCurrentThread) {
             runnable.run();
