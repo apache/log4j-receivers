@@ -40,15 +40,14 @@ public class UtilLoggingLevel extends Level {
     /**
      * Numerical value for SEVERE.
      */
-    public static final int SEVERE_INT = 17000;
+    public static final int SEVERE_INT = 22000;
     /**
      * Numerical value for WARNING.
      */
-    public static final int WARNING_INT = 16000;
-    /**
-     * Numerical value for INFO.
-     */
-    public static final int INFO_INT = 15000;
+    public static final int WARNING_INT = 21000;
+
+    //INFO level defined in parent as 20000..no need to redefine here
+    
     /**
      * Numerical value for CONFIG.
      */
@@ -83,6 +82,7 @@ public class UtilLoggingLevel extends Level {
     /**
      * INFO.
      */
+    //note: we've aligned the int values of the java.util.logging INFO level with log4j's level
     public static final UtilLoggingLevel INFO =
             new UtilLoggingLevel(INFO_INT, "INFO", 5);
     /**
