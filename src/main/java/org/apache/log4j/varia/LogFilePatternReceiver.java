@@ -521,7 +521,6 @@ public class LogFilePatternReceiver extends Receiver {
             if (passesExpression(event)) {
                 doPost(event);
             }
-            getLogger().debug("no further lines to process in " + fileURL);
         }
     }
 
@@ -586,6 +585,10 @@ public class LogFilePatternReceiver extends Receiver {
 
     protected void setPath(String path) {
 	  this.path = path;
+  }
+
+  public String getPath() {
+      return path;
   }
 
     /**
@@ -857,6 +860,8 @@ public class LogFilePatternReceiver extends Receiver {
    * Close the reader.
    */
   public void shutdown() {
+    getLogger().info(getPath() + " shutdown");
+    active = false;
     try {
       if (reader != null) {
         reader.close();
@@ -871,6 +876,8 @@ public class LogFilePatternReceiver extends Receiver {
    * Read and process the log file.
    */
   public void activateOptions() {
+    getLogger().info("activateOptions");
+    active = true;
 	Runnable runnable = new Runnable() {
 	  public void run() {
         initialize();
@@ -894,13 +901,14 @@ public class LogFilePatternReceiver extends Receiver {
                 BufferedReader bufferedReader = new BufferedReader(reader);
                 createPattern();
                 do {
-                    getLogger().debug("tailing file: " + tailing);
                     process(bufferedReader);
                     try {
                         synchronized (this) {
                             wait(waitMillis);
                         }
-                    } catch (InterruptedException ie) {
+                    } catch (InterruptedException ie) {}
+                    if (tailing) {
+                      getLogger().debug("tailing file");
                     }
                 } while (tailing);
 
@@ -908,7 +916,7 @@ public class LogFilePatternReceiver extends Receiver {
                 //io exception - probably shut down
                 getLogger().info("stream closed");
             }
-            getLogger().debug("processing " + fileURL + " complete");
+            getLogger().debug("processing " + path + " complete");
             shutdown();
           }
         };
