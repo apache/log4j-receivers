@@ -27,13 +27,10 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -138,7 +135,7 @@ import org.apache.oro.text.regex.Perl5Matcher;
  *@author Scott Deboy
  */
 public class LogFilePatternReceiver extends Receiver {
-  private final Set keywords = new HashSet();
+  private final List keywords = new ArrayList();
 
   private static final String PROP_START = "PROP(";
   private static final String PROP_END = ")";
@@ -161,6 +158,7 @@ public class LogFilePatternReceiver extends Receiver {
   private static final String REGEXP_DEFAULT_WILDCARD = ".*?";
   private static final String REGEXP_GREEDY_WILDCARD = ".*";
   private static final String PATTERN_WILDCARD = "*";
+  private static final String NOSPACE_GROUP = "(\\S*?)";
   private static final String DEFAULT_GROUP = "(" + REGEXP_DEFAULT_WILDCARD + ")";
   private static final String GREEDY_GROUP = "(" + REGEXP_GREEDY_WILDCARD + ")";
   private static final String MULTIPLE_SPACES_REGEXP = "[ ]+";
@@ -564,7 +562,10 @@ public class LogFilePatternReceiver extends Receiver {
     Map map = new HashMap();
     //group zero is the entire match - process all other groups
     for (int i = 1; i < result.groups(); i++) {
-      map.put(matchingKeywords.get(i - 1), result.group(i));
+      Object key = matchingKeywords.get(i - 1);
+      Object value = result.group(i);
+      map.put(key, value);
+
     }
     return map;
   }
@@ -634,41 +635,29 @@ public class LogFilePatternReceiver extends Receiver {
       getLogger().warn("Invalid filter expression: " + filterExpression, e);
     }
 
-    Map keywordMap = new TreeMap();
+    List buildingKeywords = new ArrayList();
 
     String newPattern = logFormat;
 
-    /*
-     * examine pattern, adding properties to an index-based map where the key is the
-     * numeric offset from the start of the pattern so that order can be preserved
-     *
-     * Replaces PROP(X) definitions in the pattern with the short version X, so
-     * that the name can be used as the event property later
-     */
     int index = 0;
-    int currentPosition = 0;
     String current = newPattern;
+    //build a list of property names and temporarily replace the property with an empty string,
+    //we'll rebuild the pattern later
+    List propertyNames = new ArrayList();
     while (index > -1) {
-      index = current.indexOf(PROP_START);
-      currentPosition = currentPosition + index;
-      if (index > -1) {
-        String currentProp = current.substring(current.indexOf(PROP_START));
-        String prop = currentProp.substring(0,
-            currentProp.indexOf(PROP_END) + 1);
-        current = current.substring(current.indexOf(currentProp) + 1);
-        String shortProp = prop.substring(PROP_START.length(),
-            prop.length() - 1);
-        keywordMap.put(new Integer(currentPosition), shortProp);
-        newPattern = replace(prop, shortProp, newPattern);
-      }
+        if (current.indexOf(PROP_START) > -1 && current.indexOf(PROP_END) > -1) {
+            index = current.indexOf(PROP_START);
+            String longPropertyName = current.substring(current.indexOf(PROP_START), current.indexOf(PROP_END) + 1);
+            String shortProp = getShortPropertyName(longPropertyName);
+            buildingKeywords.add(shortProp);
+            propertyNames.add(longPropertyName);
+            current = current.substring(longPropertyName.length() + 1 + index);
+            newPattern = singleReplace(newPattern, longPropertyName, new Integer(buildingKeywords.size() -1).toString());
+        } else {
+            //no properties
+            index = -1;
+        }
     }
-
-    newPattern = replaceMetaChars(newPattern);
-
-    //compress one or more spaces in the pattern into the [ ]+ regexp
-    //(supports padding of level in log files)
-    newPattern = util.substitute("s/" + MULTIPLE_SPACES_REGEXP +"/" + MULTIPLE_SPACES_REGEXP + "/g", newPattern);
-    newPattern = replace(PATTERN_WILDCARD, REGEXP_DEFAULT_WILDCARD, newPattern);
 
     /*
      * we're using a treemap, so the index will be used as the key to ensure
@@ -683,32 +672,86 @@ public class LogFilePatternReceiver extends Receiver {
       String keyword = (String) iter.next();
       int index2 = newPattern.indexOf(keyword);
       if (index2 > -1) {
-        keywordMap.put(new Integer(index2), keyword);
+        buildingKeywords.add(keyword);
+        newPattern = singleReplace(newPattern, keyword, new Integer(buildingKeywords.size() -1).toString());
       }
     }
 
-    //keywordMap should be ordered by index..add all values to a list
-    matchingKeywords.addAll(keywordMap.values());
+    String buildingInt = "";
 
-    /*
-     * iterate over the keywords found in the pattern and replace with regexp
-     * group
-     */
-    String currentPattern = newPattern;
-    for (int i = 0;i<matchingKeywords.size();i++) {
-      String keyword = (String) matchingKeywords.get(i);
-      //make the final keyword greedy
-      if (i == (matchingKeywords.size() - 1)) {
-        currentPattern = replace(keyword, GREEDY_GROUP, currentPattern);
+    for (int i=0;i<newPattern.length();i++) {
+        String thisValue = String.valueOf(newPattern.substring(i, i+1));
+        if (isInteger(thisValue)) {
+            buildingInt = buildingInt + thisValue;
+        } else {
+            if (isInteger(buildingInt)) {
+                matchingKeywords.add(buildingKeywords.get(Integer.parseInt(buildingInt)));
+            }
+            //reset
+            buildingInt = "";
+        }
+    }
+
+    //if the very last value is an int, make sure to add it
+    if (isInteger(buildingInt)) {
+        matchingKeywords.add(buildingKeywords.get(Integer.parseInt(buildingInt)));
+    }
+
+    newPattern = replaceMetaChars(newPattern);
+
+    //compress one or more spaces in the pattern into the [ ]+ regexp
+    //(supports padding of level in log files)
+    newPattern = util.substitute("s/" + MULTIPLE_SPACES_REGEXP +"/" + MULTIPLE_SPACES_REGEXP + "/g", newPattern);
+    newPattern = globalReplace(PATTERN_WILDCARD, REGEXP_DEFAULT_WILDCARD, newPattern);
+
+    for (int i = 0;i<buildingKeywords.size();i++) {
+      String keyword = (String) buildingKeywords.get(i);
+      //make the final keyword greedy (we're assuming it's the message)
+      if (i == (buildingKeywords.size() - 1)) {
+        newPattern = singleReplace(newPattern, String.valueOf(i), GREEDY_GROUP);
       } else if (TIMESTAMP.equals(keyword)) {
-        currentPattern = replace(keyword, "(" + timestampPatternText + ")", currentPattern);
+        newPattern = singleReplace(newPattern, String.valueOf(i), "(" + timestampPatternText + ")");
+      } else if (LOGGER.equals(keyword) || LEVEL.equals(keyword)) {
+        newPattern = singleReplace(newPattern, String.valueOf(i), NOSPACE_GROUP);
       } else {
-        currentPattern = replace(keyword, DEFAULT_GROUP, currentPattern);
+        newPattern = singleReplace(newPattern, String.valueOf(i), DEFAULT_GROUP);
       }
     }
 
-    regexp = currentPattern;
+
+    regexp = newPattern;
     getLogger().debug("regexp is " + regexp);
+  }
+
+    private boolean isInteger(String value) {
+        try {
+            Integer.parseInt(value);
+            return true;
+        } catch (NumberFormatException nfe) {
+            return false;
+        }
+    }
+
+    private String singleReplace(String inputString, String oldString, String newString)
+    {
+        int propLength = oldString.length();
+        int startPos = inputString.indexOf(oldString);
+        if (startPos == 0)
+    {
+        inputString = inputString.substring(propLength);
+        inputString = newString + inputString;
+    } else {
+        inputString = inputString.substring(0, startPos) + newString + inputString.substring(startPos + propLength);
+    }
+        return inputString;
+    }
+
+    private String getShortPropertyName(String longPropertyName)
+  {
+      String currentProp = longPropertyName.substring(longPropertyName.indexOf(PROP_START));
+      String prop = currentProp.substring(0, currentProp.indexOf(PROP_END) + 1);
+      String shortProp = prop.substring(PROP_START.length(), prop.length() - 1);
+      return shortProp;
   }
 
     /**
@@ -720,7 +763,7 @@ public class LogFilePatternReceiver extends Receiver {
    *
    * @return string
    */
-  private String replace(String pattern, String replacement, String input) {
+  private String globalReplace(String pattern, String replacement, String input) {
     return util.substitute("s/" + Perl5Compiler.quotemeta(pattern) + "/"
         + Perl5Compiler.quotemeta(replacement) + "/g", input);
   }
@@ -733,14 +776,14 @@ public class LogFilePatternReceiver extends Receiver {
    * @return string
    */
   private String replaceMetaChars(String input) {
-    input = replace("(", "\\(", input);
-    input = replace(")", "\\)", input);
-    input = replace("[", "\\[", input);
-    input = replace("]", "\\]", input);
-    input = replace("{", "\\{", input);
-    input = replace("}", "\\}", input);
-    input = replace("#", "\\#", input);
-    input = replace("/", "\\/", input);
+    input = globalReplace("(", "\\(", input);
+    input = globalReplace(")", "\\)", input);
+    input = globalReplace("[", "\\[", input);
+    input = globalReplace("]", "\\]", input);
+    input = globalReplace("{", "\\{", input);
+    input = globalReplace("}", "\\}", input);
+    input = globalReplace("#", "\\#", input);
+    input = globalReplace("/", "\\/", input);
     return input;
   }
 
@@ -792,15 +835,18 @@ public class LogFilePatternReceiver extends Receiver {
       timeStamp = System.currentTimeMillis();
     }
 
-    level = (String) fieldMap.remove(LEVEL);
-    Level levelImpl = (level == null ? Level.DEBUG : Level.toLevel(level.trim()));
-
-    threadName = (String) fieldMap.remove(THREAD);
-
     message = fieldMap.remove(MESSAGE);
     if (message == null) {
       message = "";
     }
+
+    level = (String) fieldMap.remove(LEVEL);
+    Level levelImpl = (level == null ? Level.DEBUG : Level.toLevel(level.trim()));
+    if (level != null && !level.equals(levelImpl.toString())) {
+        getLogger().debug("found unexpected level: " + level + ", logger: " + logger.getName() + ", msg: " + message); 
+    }
+
+    threadName = (String) fieldMap.remove(THREAD);
 
     ndc = (String) fieldMap.remove(NDC);
 
