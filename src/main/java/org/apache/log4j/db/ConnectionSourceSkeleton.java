@@ -17,18 +17,21 @@
 
 package org.apache.log4j.db;
 
-import org.apache.log4j.db.dialect.Util;
-import org.apache.log4j.spi.ComponentBase;
-
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
+
+import org.apache.log4j.db.dialect.Util;
+import org.apache.log4j.spi.ComponentBase;
 
 
 /**
  * @author Ceki G&uuml;lc&uuml;
  */
 public abstract class ConnectionSourceSkeleton extends ComponentBase implements ConnectionSource {
+  
+  private Boolean overriddenSupportsGetGeneratedKeys = null;
+  
   private String user = null;
   private String password = null;
 
@@ -43,8 +46,9 @@ public abstract class ConnectionSourceSkeleton extends ComponentBase implements 
    *
    */
   public void discoverConnnectionProperties() {
+    Connection connection = null;
     try {
-      Connection connection = getConnection();
+      connection = getConnection();
       if (connection == null) {
         getLogger().warn("Could not get a conneciton");
         return;
@@ -52,11 +56,18 @@ public abstract class ConnectionSourceSkeleton extends ComponentBase implements 
       DatabaseMetaData meta = connection.getMetaData();
       Util util = new Util();
       util.setLoggerRepository(repository);
-      supportsGetGeneratedKeys = util.supportsGetGeneratedKeys(meta);
+      if (overriddenSupportsGetGeneratedKeys != null) {
+        supportsGetGeneratedKeys = overriddenSupportsGetGeneratedKeys
+            .booleanValue();
+      } else {
+        supportsGetGeneratedKeys = util.supportsGetGeneratedKeys(meta);
+      }
       supportsBatchUpdates = util.supportsBatchUpdates(meta);
       dialectCode = Util.discoverSQLDialect(meta);
     } catch (SQLException se) {
       getLogger().warn("Could not discover the dialect to use.", se);
+    } finally {
+      DBHelper.closeConnection(connection);
     }
   }
 
@@ -101,6 +112,35 @@ public abstract class ConnectionSourceSkeleton extends ComponentBase implements 
     this.user = username;
   }
 
+  /**
+   * Returns the "overridden" value of "supportsGetGeneratedKeys" property of
+   * the JDBC driver. In certain cases, getting (e.g. Oracle 10g) generated keys
+   * does not work because it returns the ROWID, not the value of the sequence.
+   * 
+   * @return A non null string, with "true" or "false" value, if overridden,
+   *         <code>null</code> if not overridden.
+   */
+  public String getOverriddenSupportsGetGeneratedKeys() {
+    return overriddenSupportsGetGeneratedKeys != null ? overriddenSupportsGetGeneratedKeys
+        .toString()
+        : null;
+  }
+
+  /**
+   * Sets the "overridden" value of "supportsGetGeneratedKeys" property of the
+   * JDBC driver. In certain cases, getting (e.g. Oracle 10g) generated keys
+   * does not work because it returns the ROWID, not the value of the sequence.
+   * 
+   * @param overriddenSupportsGetGeneratedKeys
+   *          A non null string, with "true" or "false" value, if overridden,
+   *          <code>null</code> if not overridden.
+   */
+  public void setOverriddenSupportsGetGeneratedKeys(
+      String overriddenSupportsGetGeneratedKeys) {
+    this.overriddenSupportsGetGeneratedKeys = Boolean
+        .valueOf(overriddenSupportsGetGeneratedKeys);
+  }
+  
   /**
    * Does this connection support batch updates?
    */

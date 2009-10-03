@@ -38,7 +38,7 @@ BEFORE INSERT ON logging_event
 FOR EACH ROW
 BEGIN
    SELECT logging_event_id_seq.nextval
-   INTO :new.sequence_number$ FROM dual
+   INTO :new.sequence_number FROM dual;
 END;
 
 CREATE TABLE logging_event_property
