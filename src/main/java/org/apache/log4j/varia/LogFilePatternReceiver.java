@@ -497,6 +497,8 @@ public class LogFilePatternReceiver extends Receiver {
                 //appended as multiple lines on the same event..
                 //choice is to have each non-matching line show up as its own line, or append them all to a previous event
                 if (appendNonMatches) {
+                    //hold on to the previous time, so we can do our best to preserve time-based ordering if the event is a non-match
+                    String lastTime = (String)currentMap.get(TIMESTAMP);
                     //build an event from the previous match (held in current map)
                     if (currentMap.size() > 0) {
                         LoggingEvent event = buildEvent();
@@ -505,6 +507,9 @@ public class LogFilePatternReceiver extends Receiver {
                               doPost(event);
                             }
                         }
+                    }
+                    if (lastTime != null) {
+                        currentMap.put(TIMESTAMP, lastTime);
                     }
                     currentMap.put(MESSAGE, line);
                 } else {
