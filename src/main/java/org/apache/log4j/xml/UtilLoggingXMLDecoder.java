@@ -122,14 +122,14 @@ public class UtilLoggingXMLDecoder implements Decoder {
    * @param properties additional properties
    */
   public void setAdditionalProperties(final Map properties) {
-    this.additionalProperties.putAll(properties);
+    this.additionalProperties = properties;
   }
 
   /**
    * Converts the LoggingEvent data in XML string format into an actual
    * XML Document class instance.
    * @param data XML fragment
-   * @return  XML document
+   * @return  dom document
    */
   private Document parse(final String data) {
     if (docBuilder == null || data == null) {
@@ -188,15 +188,19 @@ public class UtilLoggingXMLDecoder implements Decoder {
     }
     Vector v = new Vector();
 
-    String line = null;
-    try {
-        while ((line = reader.readLine()) != null) {
-            StringBuffer buffer = new StringBuffer(line);
-            for (int i = 0; i < 100; i++) {
-                buffer.append(reader.readLine());
-            }
-            v.addAll(decodeEvents(buffer.toString()));
-        }
+      String line;
+      Vector events;
+      try {
+          while ((line = reader.readLine()) != null) {
+              StringBuffer buffer = new StringBuffer(line);
+              for (int i = 0; i < 1000; i++) {
+                  buffer.append(reader.readLine()).append("\n");
+              }
+              events = decodeEvents(buffer.toString());
+              if (events != null) {
+                  v.addAll(events);
+              }
+          }
     } finally {
       partialEvent = null;
       try {
@@ -220,14 +224,14 @@ public class UtilLoggingXMLDecoder implements Decoder {
 
       if (document != null) {
 
-          if (document.equals("")) {
+          if (document.trim().equals("")) {
               return null;
           }
 
           String newDoc;
           String newPartialEvent = null;
           //separate the string into the last portion ending with </record>
-          // (which willbe processed) and the partial event which
+          // (which will be processed) and the partial event which
           // will be combined and processed in the next section
 
           //if the document does not contain a record end,
@@ -286,7 +290,7 @@ public class UtilLoggingXMLDecoder implements Decoder {
   /**
    * Given a Document, converts the XML into a Vector of LoggingEvents.
    * @param document XML document
-   * @return vector of logging events
+   * @return Vector of LoggingEvents
    */
   private Vector decodeEvents(final Document document) {
     Vector events = new Vector();
@@ -298,17 +302,17 @@ public class UtilLoggingXMLDecoder implements Decoder {
       Node eventNode = eventList.item(eventIndex);
 
       Logger logger = null;
-      long timeStamp = 0L;
-      Level level = null;
-      String threadName = null;
-      Object message = null;
-      String ndc = null;
-      String[] exception = null;
-      String className = null;
-      String methodName = null;
-      String fileName = null;
-      String lineNumber = null;
-      Hashtable properties = new Hashtable();
+    long timeStamp = 0L;
+    Level level = null;
+    String threadName = null;
+    Object message = null;
+    String ndc = null;
+    String[] exception = null;
+    String className = null;
+    String methodName = null;
+    String fileName = null;
+    String lineNumber = null;
+    Hashtable properties = new Hashtable();
 
       //format of date: 2003-05-04T11:04:52
       //ignore date or set as a property? using millis in constructor instead
@@ -382,25 +386,22 @@ public class UtilLoggingXMLDecoder implements Decoder {
         }
       }
 
-      /**
-       * We add all the additional properties to the properties
-       * hashtable
-       */
-      if (additionalProperties.size() > 0) {
-        if (properties == null) {
-          properties = new Hashtable(additionalProperties);
-        } else {
-          Iterator i = additionalProperties.entrySet().iterator();
-          while (i.hasNext()) {
-            Map.Entry e = (Map.Entry) i.next();
-            if (!(properties.containsKey(e.getKey()))) {
+        /**
+         * We add all the additional properties to the properties
+         * hashtable. Override properties that already exist
+         */
+        if (additionalProperties.size() > 0) {
+            if (properties == null) {
+                properties = new Hashtable(additionalProperties);
+            }
+            Iterator i = additionalProperties.entrySet().iterator();
+            while (i.hasNext()) {
+                Map.Entry e = (Map.Entry) i.next();
                 properties.put(e.getKey(), e.getValue());
             }
-          }
         }
-      }
 
-      LocationInfo info = null;
+      LocationInfo info;
       if ((fileName != null)
               || (className != null)
               || (methodName != null)

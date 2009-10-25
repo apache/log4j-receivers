@@ -57,7 +57,7 @@ import org.xml.sax.InputSource;
  * even though the DTD supports multiple events nested in an eventSet.
  *
  * NOTE: This class has been created on the assumption that all XML log files
- * are encoding in UTF-8 encoding. There is no current support for any other 
+ * are encoded in UTF-8. There is no current support for any other
  * encoding format at this time.
  * 
  * @author Scott Deboy (sdeboy@apache.org)
@@ -115,7 +115,6 @@ public class XMLDecoder implements Decoder {
      * Create new instance.
      */
    public XMLDecoder() {
-    super();
     DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
     dbf.setValidating(false);
 
@@ -156,7 +155,6 @@ public class XMLDecoder implements Decoder {
       // complain. Indeed, "log4j.dtd" alone is not a valid URI which
       // causes Crimson to barf. The Log4jEntityResolver only cares
       // about the "log4j.dtd" ending.
-      //      buf.setLength(0);
 
       /**
        * resetting the length of the StringBuffer is dangerous, particularly
@@ -274,7 +272,7 @@ public class XMLDecoder implements Decoder {
    * relevant bits to form a new LoggingEvent instance which can be used
    * by any Log4j element locally.
    * @param data XML fragment
-   * @return a single LoggingEvent
+   * @return a single LoggingEvent or null
    */
   public LoggingEvent decode(final String data) {
     Document document = parse(data);
@@ -302,7 +300,7 @@ public class XMLDecoder implements Decoder {
 
     Logger logger;
     long timeStamp;
-    String level;
+    Level level;
     String threadName;
     Object message = null;
     String ndc = null;
@@ -325,18 +323,17 @@ public class XMLDecoder implements Decoder {
         if (eventNode.getNodeType() != Node.ELEMENT_NODE) {
             continue;
         }
-        logger =
-            Logger.getLogger(
-               eventNode.getAttributes().getNamedItem("logger").getNodeValue());
-      timeStamp =
-        Long.parseLong(
-          eventNode.getAttributes().getNamedItem("timestamp").getNodeValue());
-      level = eventNode.getAttributes().getNamedItem("level").getNodeValue();
-      threadName =
-        eventNode.getAttributes().getNamedItem("thread").getNodeValue();
+      logger = Logger.getLogger(eventNode.getAttributes().getNamedItem("logger").getNodeValue());
+      timeStamp = Long.parseLong(eventNode.getAttributes().getNamedItem("timestamp").getNodeValue());
+      level = Level.toLevel(eventNode.getAttributes().getNamedItem("level").getNodeValue());
+      threadName = eventNode.getAttributes().getNamedItem("thread").getNodeValue();
 
       NodeList list = eventNode.getChildNodes();
       int listLength = list.getLength();
+
+      if (listLength == 0) {
+        continue;
+      }
 
       for (int y = 0; y < listLength; y++) {
         String tagName = list.item(y).getNodeName();
@@ -406,25 +403,21 @@ public class XMLDecoder implements Decoder {
           }
         }
 
-        /**
-         * We add all the additional properties to the properties
-         * hashtable.  Don't override properties that already exist
-         */
-        if (additionalProperties.size() > 0) {
-          if (properties == null) {
-            properties = new Hashtable(additionalProperties);
-          } else {
-            Iterator i = additionalProperties.entrySet().iterator();
-            while (i.hasNext()) {
-              Map.Entry e = (Map.Entry) i.next();
-              if (!(properties.containsKey(e.getKey()))) {
-                properties.put(e.getKey(), e.getValue());
+          /**
+           * We add all the additional properties to the properties
+           * hashtable. Override properties that already exist
+           */
+          if (additionalProperties.size() > 0) {
+              if (properties == null) {
+                  properties = new Hashtable(additionalProperties);
               }
-            }
+              Iterator i = additionalProperties.entrySet().iterator();
+              while (i.hasNext()) {
+                  Map.Entry e = (Map.Entry) i.next();
+                  properties.put(e.getKey(), e.getValue());
+              }
           }
-        }
       }
-      Level levelImpl = Level.toLevel(level);
 
       LocationInfo info;
       if ((fileName != null)
@@ -440,7 +433,7 @@ public class XMLDecoder implements Decoder {
       }
 
         LoggingEvent loggingEvent = new LoggingEvent(null,
-                logger, timeStamp, levelImpl, message,
+                logger, timeStamp, level, message,
                 threadName,
                 new ThrowableInformation(exception),
                 ndc,
