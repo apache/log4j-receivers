@@ -848,7 +848,9 @@ public class LogFilePatternReceiver extends Receiver {
     level = (String) fieldMap.remove(LEVEL);
     Level levelImpl = (level == null ? Level.DEBUG : Level.toLevel(level.trim()));
     if (level != null && !level.equals(levelImpl.toString())) {
-        getLogger().debug("found unexpected level: " + level + ", logger: " + logger.getName() + ", msg: " + message); 
+        getLogger().debug("found unexpected level: " + level + ", logger: " + logger.getName() + ", msg: " + message);
+        //make sure the text that couldn't match a level is added to the message
+        message = level + " " + message;
     }
 
     threadName = (String) fieldMap.remove(THREAD);
