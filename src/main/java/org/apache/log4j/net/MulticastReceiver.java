@@ -58,6 +58,13 @@ public class MulticastReceiver extends Receiver implements PortBased,
   private MulticastHandlerThread handlerThread;
   private MulticastReceiverThread receiverThread;
   private boolean paused;
+  private boolean advertiseViaMulticastDNS;
+  private ZeroConfSupport zeroConf;
+
+  /**
+   * The MulticastDNS zone advertised by a MulticastReceiver
+   */
+  public static final String ZONE = "_log4j_xml_mcast_receiver.local.";
 
   public String getDecoder() {
     return decoder;
@@ -96,6 +103,9 @@ public class MulticastReceiver extends Receiver implements PortBased,
 
   public synchronized void shutdown() {
     isActive = false;
+    if (advertiseViaMulticastDNS) {
+        zeroConf.unadvertise();
+    }
     handlerThread.interrupt();
     receiverThread.interrupt();
     socket.close();
@@ -111,12 +121,6 @@ public class MulticastReceiver extends Receiver implements PortBased,
 
   public void setPaused(boolean b) {
     paused = b;
-  }
-
-  /**
-    Returns true if this receiver is active. */
-  public synchronized boolean isActive() {
-    return isActive;
   }
 
   public void activateOptions() {
@@ -151,12 +155,25 @@ public class MulticastReceiver extends Receiver implements PortBased,
       receiverThread.start();
       handlerThread = new MulticastHandlerThread();
       handlerThread.start();
+      if (advertiseViaMulticastDNS) {
+        zeroConf = new ZeroConfSupport(ZONE, port, getName());
+        zeroConf.advertise();
+      }
+
     } catch (IOException ioe) {
       ioe.printStackTrace();
     }
   }
 
-  class MulticastHandlerThread extends Thread {
+    public void setAdvertiseViaMulticastDNS(boolean advertiseViaMulticastDNS) {
+        this.advertiseViaMulticastDNS = advertiseViaMulticastDNS;
+    }
+
+    public boolean isAdvertiseViaMulticastDNS() {
+        return advertiseViaMulticastDNS;
+    }
+
+    class MulticastHandlerThread extends Thread {
     private List list = new ArrayList();
 
     public MulticastHandlerThread() {

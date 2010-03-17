@@ -20,8 +20,8 @@ package org.apache.log4j.net;
 import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.helpers.Constants;
 import org.apache.log4j.spi.LoggingEvent;
-import org.apache.log4j.xml.XMLLayout;
 import org.apache.log4j.helpers.LogLog;
+import org.apache.log4j.xml.XMLLayout;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -68,11 +68,18 @@ public class UDPAppender extends AppenderSkeleton implements PortBased{
   int port = DEFAULT_PORT;
   DatagramSocket outSocket;
 
+  /**
+   * The MulticastDNS zone advertised by a UDPAppender
+   */
+  public static final String ZONE = "_log4j_xml_udp_appender.local.";
+
   // if there is something irrecoverably wrong with the settings, there is no
   // point in sending out packeets.
   boolean inError = false;
-  
-  public UDPAppender() {
+  private boolean advertiseViaMulticastDNS;
+  private ZeroConfSupport zeroConf;
+
+    public UDPAppender() {
       super(false);
   }
 
@@ -129,6 +136,16 @@ public class UDPAppender extends AppenderSkeleton implements PortBased{
       LogLog.error(err);
       throw new IllegalStateException(err);
     }
+
+    if (layout == null) {
+        layout = new XMLLayout();
+    }
+
+    if (advertiseViaMulticastDNS) {
+      zeroConf = new ZeroConfSupport(ZONE, port, getName());
+      zeroConf.advertise();
+    }
+
     super.activateOptions();
   }
 
@@ -142,6 +159,10 @@ public class UDPAppender extends AppenderSkeleton implements PortBased{
       return;
     }
 
+    if (advertiseViaMulticastDNS) {
+      zeroConf.unadvertise();
+    }
+      
     this.closed = true;
     cleanUp();
   }
@@ -199,7 +220,6 @@ public class UDPAppender extends AppenderSkeleton implements PortBased{
       }
 
       try {
-        // TODO UDPAppender throws NullPointerException if the layout is not set
         StringBuffer buf = new StringBuffer(layout.format(event));
 
         byte[] payload;
@@ -300,4 +320,11 @@ public class UDPAppender extends AppenderSkeleton implements PortBased{
     return port;
   }
 
+  public void setAdvertiseViaMulticastDNS(boolean advertiseViaMulticastDNS) {
+    this.advertiseViaMulticastDNS = advertiseViaMulticastDNS;
+  }
+
+  public boolean isAdvertiseViaMulticastDNS() {
+    return advertiseViaMulticastDNS;
+  }
 }

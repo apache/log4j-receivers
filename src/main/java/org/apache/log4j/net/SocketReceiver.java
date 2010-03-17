@@ -75,6 +75,12 @@ public class SocketReceiver extends Receiver implements Runnable, PortBased,
      * Socket list.
      */
   private Vector socketList = new Vector();
+
+  /**
+   * The MulticastDNS zone advertised by a SocketReceiver
+   */
+  public static final String ZONE = "_log4j_obj_tcpaccept_receiver.local.";
+
     /**
      * Listener.
      */
@@ -83,6 +89,8 @@ public class SocketReceiver extends Receiver implements Runnable, PortBased,
      * Listeners.
      */
   private List listenerList = Collections.synchronizedList(new ArrayList());
+  private boolean advertiseViaMulticastDNS;
+  private ZeroConfSupport zeroConf;
 
     /**
      * Create new instance.
@@ -148,6 +156,11 @@ public class SocketReceiver extends Receiver implements Runnable, PortBased,
       rThread = new Thread(this);
       rThread.setDaemon(true);
       rThread.start();
+      if (advertiseViaMulticastDNS) {
+        zeroConf = new ZeroConfSupport(ZONE, port, getName());
+        zeroConf.advertise();
+      }
+
       active = true;
     }
   }
@@ -165,6 +178,9 @@ public class SocketReceiver extends Receiver implements Runnable, PortBased,
     if (rThread != null) {
       rThread.interrupt();
       rThread = null;
+    }
+    if (advertiseViaMulticastDNS) {
+        zeroConf.unadvertise();
     }
 
     doShutdown();
@@ -218,6 +234,22 @@ public class SocketReceiver extends Receiver implements Runnable, PortBased,
     // clear member variables
     socketMap.clear();
     socketList.clear();
+  }
+
+  /**
+    Sets the flag to indicate if receiver is active or not.
+   @param b new value
+   */
+  protected synchronized void setActive(final boolean b) {
+    active = b;
+  }
+
+  public void setAdvertiseViaMulticastDNS(boolean advertiseViaMulticastDNS) {
+      this.advertiseViaMulticastDNS = advertiseViaMulticastDNS;
+  }
+
+  public boolean isAdvertiseViaMulticastDNS() {
+      return advertiseViaMulticastDNS;
   }
 
   /**

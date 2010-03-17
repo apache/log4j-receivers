@@ -63,6 +63,11 @@ extends Receiver implements SocketNodeEventListener, PortBased {
      */
   protected int reconnectionDelay = DEFAULT_RECONNECTION_DELAY;
 
+  /**
+   * The MulticastDNS zone advertised by a SocketHubReceiver
+   */
+  public static final String ZONE = "_log4j_obj_tcpconnect_receiver.local.";
+
     /**
      * Active.
      */
@@ -82,6 +87,9 @@ extends Receiver implements SocketNodeEventListener, PortBased {
      * Listener list.
      */
   private List listenerList = Collections.synchronizedList(new ArrayList());
+
+  private boolean advertiseViaMulticastDNS;
+  private ZeroConfSupport zeroConf;
 
     /**
      * Create new instance.
@@ -223,14 +231,6 @@ extends Receiver implements SocketNodeEventListener, PortBased {
   }
 
   /**
-    Returns true if this receiver is active.
-   @return true if receiver is active
-   */
-  public synchronized boolean isActive() {
-    return active;
-  }
-
-  /**
     Sets the flag to indicate if receiver is active or not.
    @param b new value
    */
@@ -243,6 +243,11 @@ extends Receiver implements SocketNodeEventListener, PortBased {
   public void activateOptions() {
     if (!isActive()) {
       setActive(true);
+      if (advertiseViaMulticastDNS) {
+        zeroConf = new ZeroConfSupport(ZONE, port, getName());
+        zeroConf.advertise();
+      }
+
       fireConnector(false);
     }
   }
@@ -268,6 +273,9 @@ extends Receiver implements SocketNodeEventListener, PortBased {
     if (connector != null) {
       connector.interrupted = true;
       connector = null;  // allow gc
+    }
+    if (advertiseViaMulticastDNS) {
+        zeroConf.unadvertise();
     }
   }
 
@@ -318,6 +326,14 @@ extends Receiver implements SocketNodeEventListener, PortBased {
         }
     }
     new Thread(socketNode).start();
+  }
+
+  public void setAdvertiseViaMulticastDNS(boolean advertiseViaMulticastDNS) {
+      this.advertiseViaMulticastDNS = advertiseViaMulticastDNS;
+  }
+
+  public boolean isAdvertiseViaMulticastDNS() {
+      return advertiseViaMulticastDNS;
   }
 
   /**

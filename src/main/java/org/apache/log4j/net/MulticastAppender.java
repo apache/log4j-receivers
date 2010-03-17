@@ -22,11 +22,15 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Map;
 
 import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.helpers.Constants;
 import org.apache.log4j.spi.LoggingEvent;
 import org.apache.log4j.helpers.LogLog;
+import org.apache.log4j.xml.XMLLayout;
 
 
 /**
@@ -54,7 +58,13 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
      The default port number for the multicast packets. (9991).
   */
   static final int DEFAULT_PORT = 9991;
-  
+
+  /**
+   * The MulticastDNS zone advertised by a MulticastAppender
+   * the MulticastAppender also adds a 'multicastAddress' property with the multicast address value as a string
+   */
+  public static final String ZONE = "_log4j_xml_mcast_appender.local.";
+
   /**
      We remember host name as String in addition to the resolved
      InetAddress so that it can be returned via getOption().
@@ -69,7 +79,9 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
   private String encoding;
 
   private boolean locationInfo = false;
-  
+  private boolean advertiseViaMulticastDNS;
+  private ZeroConfSupport zeroConf;
+
   public MulticastAppender() {
      super(false);
   }
@@ -100,11 +112,21 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
     if(remoteHost != null) {
       address = getAddressByName(remoteHost);
     } else {
-      String err = "The RemoteHost property is required for SocketAppender named "+ name;
+      String err = "The RemoteHost property is required for MulticastAppender named "+ name;
       LogLog.error(err);
       throw new IllegalStateException(err);
     }
-    
+
+    if (layout == null) {
+        layout = new XMLLayout();
+    }
+      
+    if (advertiseViaMulticastDNS) {
+        Map properties = new HashMap();
+        properties.put("multicastAddress", remoteHost);
+        zeroConf = new ZeroConfSupport(ZONE, port, getName(), properties);
+        zeroConf.advertise();
+    }
     connect();
     super.activateOptions();
   }
@@ -120,6 +142,9 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
     }
 
     this.closed = true;
+    if (advertiseViaMulticastDNS) {
+        zeroConf.unadvertise();
+    }
     cleanUp();
   }
 
@@ -310,4 +335,11 @@ public class MulticastAppender extends AppenderSkeleton implements PortBased {
       return true;
   }
 
+  public boolean isAdvertiseViaMulticastDNS() {
+      return advertiseViaMulticastDNS;
+  }
+
+  public void setAdvertiseViaMulticastDNS(boolean advertiseViaMulticastDNS) {
+      this.advertiseViaMulticastDNS = advertiseViaMulticastDNS;
+  }
 }

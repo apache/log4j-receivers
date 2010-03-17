@@ -41,6 +41,7 @@ public class MulticastReceiverBeanInfo extends SimpleBeanInfo {
                 new PropertyDescriptor("port", MulticastReceiver.class),
                 new PropertyDescriptor("threshold", MulticastReceiver.class),
                 new PropertyDescriptor("decoder", MulticastReceiver.class),
+                new PropertyDescriptor("advertiseViaMulticastDNS", MulticastReceiver.class),
             };
         } catch (Exception e) {
         }

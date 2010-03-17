@@ -51,8 +51,16 @@ public class UDPReceiver extends Receiver implements PortBased, Pauseable {
   private int port;
   private DatagramSocket socket;
   UDPHandlerThread handlerThread;
+  private boolean advertiseViaMulticastDNS;
+  private ZeroConfSupport zeroConf;
 
-  public int getPort() {
+  /**
+   * The MulticastDNS zone advertised by a UDPReceiver
+   */
+  public static final String ZONE = "_log4j_xml_udp_receiver.local.";
+
+
+    public int getPort() {
     return port;
   }
 
@@ -91,6 +99,14 @@ public class UDPReceiver extends Receiver implements PortBased, Pauseable {
     paused = b;
   }
 
+  public void setAdvertiseViaMulticastDNS(boolean advertiseViaMulticastDNS) {
+    this.advertiseViaMulticastDNS = advertiseViaMulticastDNS;
+  }
+
+  public boolean isAdvertiseViaMulticastDNS() {
+    return advertiseViaMulticastDNS;
+  }
+
   public synchronized void shutdown() {
     if(closed == true) {
       return;
@@ -102,6 +118,10 @@ public class UDPReceiver extends Receiver implements PortBased, Pauseable {
     	socket.close();
     }
 
+    if (advertiseViaMulticastDNS) {
+      zeroConf.unadvertise();
+    }
+      
     try {
       if(handlerThread != null) {
       	handlerThread.close();
@@ -142,6 +162,11 @@ public class UDPReceiver extends Receiver implements PortBased, Pauseable {
       receiverThread.start();
       handlerThread = new UDPHandlerThread();
       handlerThread.start();
+      if (advertiseViaMulticastDNS) {
+        zeroConf = new ZeroConfSupport(ZONE, port, getName());
+        zeroConf.advertise();
+      }
+
     } catch (IOException ioe) {
       ioe.printStackTrace();
     }
@@ -160,7 +185,7 @@ public class UDPReceiver extends Receiver implements PortBased, Pauseable {
         list.notify();
       }
     }
-  
+
     /**
      * Allow the UDPHandlerThread to wakeup and exit gracefully.
      */
@@ -177,7 +202,7 @@ public class UDPReceiver extends Receiver implements PortBased, Pauseable {
         synchronized (list) {
           try {
             while (!UDPReceiver.this.closed && list.size() == 0) {
-              list.wait();
+              list.wait(300);
             }
 
             if (list.size() > 0) {

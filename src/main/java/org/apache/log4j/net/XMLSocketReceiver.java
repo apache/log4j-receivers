@@ -60,6 +60,18 @@ public class XMLSocketReceiver extends Receiver implements Runnable, PortBased, 
   private Thread rThread;
   public static final int DEFAULT_PORT = 4448;
   protected int port = DEFAULT_PORT;
+  private boolean advertiseViaMulticastDNS;
+  private ZeroConfSupport zeroConf;
+
+  /**
+   * The MulticastDNS zone advertised by an XMLSocketReceiver
+   */
+  public static final String ZONE = "_log4j_xml_tcpaccept_receiver.local.";
+
+  /*
+   * Log4j doesn't provide an XMLSocketAppender, but the MulticastDNS zone that should be advertised by one is:
+   * _log4j_xml_tcpconnect_appender.local.
+   */
 
   public XMLSocketReceiver() {
   }
@@ -129,11 +141,13 @@ public class XMLSocketReceiver extends Receiver implements Runnable, PortBased, 
   	result = result * 37 + port;
   	return (result * 37 + (getName() != null? getName().hashCode():0));
   }
-  	
+
   /**
-    Returns true if this receiver is active. */
-  public synchronized boolean isActive() {
-    return active;
+    Sets the flag to indicate if receiver is active or not.
+   @param b new value
+   */
+  protected synchronized void setActive(final boolean b) {
+    active = b;
   }
 
   /**
@@ -143,8 +157,22 @@ public class XMLSocketReceiver extends Receiver implements Runnable, PortBased, 
       rThread = new Thread(this);
       rThread.setDaemon(true);
       rThread.start();
+
+      if (advertiseViaMulticastDNS) {
+        zeroConf = new ZeroConfSupport(ZONE, port, getName());
+        zeroConf.advertise();
+      }
+
       active = true;
     }
+  }
+
+  public void setAdvertiseViaMulticastDNS(boolean advertiseViaMulticastDNS) {
+    this.advertiseViaMulticastDNS = advertiseViaMulticastDNS;
+  }
+
+  public boolean isAdvertiseViaMulticastDNS() {
+    return advertiseViaMulticastDNS;
   }
 
   /**
@@ -175,6 +203,10 @@ public class XMLSocketReceiver extends Receiver implements Runnable, PortBased, 
 
       // close all of the accepted sockets
       closeAllAcceptedSockets();
+
+      if (advertiseViaMulticastDNS) {
+          zeroConf.unadvertise();
+      }
     }
 
     /**
