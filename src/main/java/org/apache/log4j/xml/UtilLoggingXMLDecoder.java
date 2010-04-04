@@ -19,6 +19,7 @@ package org.apache.log4j.xml;
 
 import java.awt.Component;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.io.StringReader;
@@ -29,6 +30,7 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Vector;
+import java.util.zip.ZipInputStream;
 
 import javax.swing.ProgressMonitorInputStream;
 import javax.xml.parsers.DocumentBuilder;
@@ -88,6 +90,8 @@ public class UtilLoggingXMLDecoder implements Decoder {
      * Owner.
      */
   private Component owner = null;
+
+  private static final String ENCODING = "UTF-8";
 
     /**
      * Create new instance.
@@ -177,14 +181,23 @@ public class UtilLoggingXMLDecoder implements Decoder {
    * @throws IOException if IO error during processing.
    */
   public Vector decode(final URL url) throws IOException {
-    LineNumberReader reader = null;
+    LineNumberReader reader;
+    boolean isZipFile = url.getPath().toLowerCase().endsWith(".zip");
+    InputStream inputStream;
+    if (isZipFile) {
+        inputStream = new ZipInputStream(url.openStream());
+        //move stream to next entry so we can read it
+        ((ZipInputStream)inputStream).getNextEntry();
+    } else {
+        inputStream = url.openStream();
+    }
     if (owner != null) {
         reader = new LineNumberReader(
                 new InputStreamReader(
                         new ProgressMonitorInputStream(owner,
-                                "Loading " + url , url.openStream())));
+                                "Loading " + url , inputStream), ENCODING));
     } else {
-        reader = new LineNumberReader(new InputStreamReader(url.openStream()));
+        reader = new LineNumberReader(new InputStreamReader(inputStream, ENCODING));
     }
     Vector v = new Vector();
 
