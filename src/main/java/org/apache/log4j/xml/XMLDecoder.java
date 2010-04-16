@@ -378,9 +378,11 @@ public class XMLDecoder implements Decoder {
         }
 
         if (tagName.equalsIgnoreCase("log4j:throwable")) {
-          exception = new String[] {
-                  getCData(list.item(y))
-          };
+            String exceptionString = getCData(list.item(y));
+            if (exceptionString != null && !exceptionString.trim().equals("")) {
+                exception = new String[] {exceptionString.trim()
+            };
+          }
         }
 
         if (tagName.equalsIgnoreCase("log4j:locationinfo")) {
@@ -440,14 +442,15 @@ public class XMLDecoder implements Decoder {
       } else {
         info = LocationInfo.NA_LOCATION_INFO;
       }
-      if (exception == null) {
-          exception = new String[]{""};
+      ThrowableInformation throwableInfo = null;
+      if (exception != null) {
+          throwableInfo = new ThrowableInformation(exception);
       }
 
         LoggingEvent loggingEvent = new LoggingEvent(null,
                 logger, timeStamp, level, message,
                 threadName,
-                new ThrowableInformation(exception),
+                throwableInfo,
                 ndc,
                 info,
                 properties);

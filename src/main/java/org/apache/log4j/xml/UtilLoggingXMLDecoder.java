@@ -393,9 +393,10 @@ public class UtilLoggingXMLDecoder implements Decoder {
               }
             }
           }
-
-          exception =
-            (String[]) exceptionList.toArray(new String[exceptionList.size()]);
+          if (exceptionList.size() > 0) {
+              exception =
+                (String[]) exceptionList.toArray(new String[exceptionList.size()]);
+          }
         }
       }
 
@@ -424,14 +425,15 @@ public class UtilLoggingXMLDecoder implements Decoder {
         info = LocationInfo.NA_LOCATION_INFO;
       }
 
-      if (exception == null) {
-          exception = new String[]{""};
-      }
+        ThrowableInformation throwableInfo = null;
+        if (exception != null) {
+            throwableInfo = new ThrowableInformation(exception);
+        }
 
         LoggingEvent loggingEvent = new LoggingEvent(null,
                 logger, timeStamp, level, message,
                 threadName,
-                new ThrowableInformation(exception),
+                throwableInfo,
                 ndc,
                 info,
                 properties);
