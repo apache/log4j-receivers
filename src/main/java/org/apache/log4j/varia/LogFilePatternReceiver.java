@@ -709,10 +709,11 @@ public class LogFilePatternReceiver extends Receiver {
     newPattern = util.substitute("s/" + MULTIPLE_SPACES_REGEXP +"/" + MULTIPLE_SPACES_REGEXP + "/g", newPattern);
     newPattern = globalReplace(PATTERN_WILDCARD, REGEXP_DEFAULT_WILDCARD, newPattern);
 
-    for (int i = 0;i<matchingKeywords.size();i++) {
-      String keyword = (String) matchingKeywords.get(i);
+    //use buildingKeywords here to ensure correct order
+    for (int i = 0;i<buildingKeywords.size();i++) {
+      String keyword = (String) buildingKeywords.get(i);
       //make the final keyword greedy (we're assuming it's the message)
-      if (i == (matchingKeywords.size() - 1)) {
+      if (i == (buildingKeywords.size() - 1)) {
         newPattern = singleReplace(newPattern, String.valueOf(i), GREEDY_GROUP);
       } else if (TIMESTAMP.equals(keyword)) {
         newPattern = singleReplace(newPattern, String.valueOf(i), "(" + timestampPatternText + ")");
