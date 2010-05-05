@@ -31,6 +31,7 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -158,11 +159,10 @@ public class LogFilePatternReceiver extends Receiver {
   private static final String REGEXP_DEFAULT_WILDCARD = ".*?";
   private static final String REGEXP_GREEDY_WILDCARD = ".*";
   private static final String PATTERN_WILDCARD = "*";
-  private static final String NOSPACE_GROUP = "(\\S*?)";
+  private static final String NOSPACE_GROUP = "(\\S*\\s*?)";
   private static final String DEFAULT_GROUP = "(" + REGEXP_DEFAULT_WILDCARD + ")";
   private static final String GREEDY_GROUP = "(" + REGEXP_GREEDY_WILDCARD + ")";
   private static final String MULTIPLE_SPACES_REGEXP = "[ ]+";
-  
   private final String newLine = System.getProperty("line.separator");
 
   private final String[] emptyException = new String[] { "" };
@@ -170,6 +170,7 @@ public class LogFilePatternReceiver extends Receiver {
   private SimpleDateFormat dateFormat;
   private String timestampFormat = "yyyy-MM-d HH:mm:ss,SSS";
   private String logFormat;
+  private String customLevelDefinitions;
   private String fileURL;
   private String host;
   private String path;
@@ -197,6 +198,7 @@ public class LogFilePatternReceiver extends Receiver {
   private boolean useCurrentThread;
   public static final int MISSING_FILE_RETRY_MILLIS = 10000;
   private boolean appendNonMatches;
+  private final Map customLevelDefinitionMap = new HashMap();
 
     public LogFilePatternReceiver() {
     keywords.add(TIMESTAMP);
@@ -233,6 +235,20 @@ public class LogFilePatternReceiver extends Receiver {
    */
   public void setFileURL(String fileURL) {
     this.fileURL = fileURL;
+  }
+
+    /**
+     * If the log file contains non-log4j level strings, they can be mapped to log4j levels using the format (android example):
+     * V=TRACE,D=DEBUG,I=INFO,W=WARN,E=ERROR,F=FATAL,S=OFF
+     *
+     * @param customLevelDefinitions the level definition string
+     */
+  public void setCustomLevelDefinitions(String customLevelDefinitions) {
+    this.customLevelDefinitions = customLevelDefinitions;
+  }
+
+  public String getCustomLevelDefinitions() {
+    return customLevelDefinitions;
   }
 
   /**
@@ -479,6 +495,8 @@ public class LogFilePatternReceiver extends Receiver {
         Perl5Matcher eventMatcher = new Perl5Matcher();
         String line;
         while ((line = bufferedReader.readLine()) != null) {
+            //skip empty line entries
+            if (line.trim().equals("")) {continue;}
             if (eventMatcher.matches(line, regexpPattern)) {
                 //build an event from the previous match (held in current map)
                 LoggingEvent event = buildEvent();
@@ -631,7 +649,8 @@ public class LogFilePatternReceiver extends Receiver {
       dateFormat = new SimpleDateFormat(timestampFormat);
       timestampPatternText = convertTimestamp();
     }
-
+    //if custom level definitions exist, parse them
+    updateCustomLevelDefinitionMap();
     try {
       if (filterExpression != null) {
         expressionRule = ExpressionRule.getRule(filterExpression);
@@ -728,6 +747,18 @@ public class LogFilePatternReceiver extends Receiver {
     regexp = newPattern;
     getLogger().debug("regexp is " + regexp);
   }
+
+    private void updateCustomLevelDefinitionMap() {
+        if (customLevelDefinitions != null) {
+            StringTokenizer entryTokenizer = new StringTokenizer(customLevelDefinitions, ",");
+
+            customLevelDefinitionMap.clear();
+            while (entryTokenizer.hasMoreTokens()) {
+                StringTokenizer innerTokenizer = new StringTokenizer(entryTokenizer.nextToken(), "=");
+                customLevelDefinitionMap.put(innerTokenizer.nextToken(), Level.toLevel(innerTokenizer.nextToken()));
+            }
+        }
+    }
 
     private boolean isInteger(String value) {
         try {
@@ -847,11 +878,24 @@ public class LogFilePatternReceiver extends Receiver {
     }
 
     level = (String) fieldMap.remove(LEVEL);
-    Level levelImpl = (level == null ? Level.DEBUG : Level.toLevel(level.trim()));
-    if (level != null && !level.equals(levelImpl.toString())) {
-        getLogger().debug("found unexpected level: " + level + ", logger: " + logger.getName() + ", msg: " + message);
-        //make sure the text that couldn't match a level is added to the message
-        message = level + " " + message;
+    Level levelImpl;
+    if (level == null) {
+        levelImpl = Level.DEBUG;
+    } else {
+        //first try to resolve against custom level definition map, then fall back to regular levels
+        levelImpl = (Level) customLevelDefinitionMap.get(level);
+        if (levelImpl == null) {
+            levelImpl = Level.toLevel(level.trim());
+            if (!level.equals(levelImpl.toString())) {
+                //check custom level map
+                if (levelImpl == null) {
+                    levelImpl = Level.DEBUG;
+                    getLogger().debug("found unexpected level: " + level + ", logger: " + logger.getName() + ", msg: " + message);
+                    //make sure the text that couldn't match a level is added to the message
+                    message = level + " " + message;
+                }
+            }
+        }
     }
 
     threadName = (String) fieldMap.remove(THREAD);
