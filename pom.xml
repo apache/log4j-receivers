@@ -81,10 +81,18 @@
         </configuration>
       </plugin>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <configuration>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
             <source>1.4</source>
             <target>1.4</target>
+	    <encoding>UTF-8</encoding>
         </configuration>
       </plugin>
 	  <plugin>
@@ -155,6 +163,11 @@
             <version>1.6.5</version>
           </dependency>
           <dependency>
+            <groupId>ant</groupId>
+            <artifactId>ant</artifactId>
+            <version>1.6.5</version>
+          </dependency>
+          <dependency>
             <groupId>ant-contrib</groupId>
             <artifactId>ant-contrib</artifactId>
             <version>1.0b2</version>
@@ -180,6 +193,9 @@
 	 </plugin>
       <plugin>
         <artifactId>maven-javadoc-plugin</artifactId>
+        <configuration>
+          <encoding>UTF-8</encoding>
+        </configuration>
         <executions>
             <execution>
                 <goals>
@@ -264,6 +280,8 @@
     <plugins>
       <plugin>
         <artifactId>maven-project-info-reports-plugin</artifactId>
+        <!--  version 2.2 runs into http://jira.codehaus.org/browse/DOXIA-215  -->
+        <version>2.1</version>
         <reportSets>
           <reportSet>
             <reports>
@@ -305,6 +323,18 @@
       </plugin>
       <plugin>
         <artifactId>maven-javadoc-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>rat-maven-plugin</artifactId>
+        <version>1.0-alpha-3</version>
+        <configuration>
+            <excludes>
+		<!--  empty file  -->
+		<exclude>src/site/resources/css/site.css</exclude>
+		<exclude>src/test/resources/**/*.log</exclude>
+	    </excludes>
+        </configuration>
       </plugin>
     </plugins>
   </reporting>
