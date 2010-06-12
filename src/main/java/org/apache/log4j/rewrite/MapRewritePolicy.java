@@ -16,11 +16,11 @@
  */
 package org.apache.log4j.rewrite;
 
-import java.util.Map;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
-import org.apache.log4j.rewrite.RewritePolicy;
+import org.apache.log4j.Logger;
 import org.apache.log4j.spi.LoggingEvent;
 
 /**
@@ -68,7 +68,7 @@ public class MapRewritePolicy implements RewritePolicy {
 
             return new LoggingEvent(
                     source.getFQNOfLoggerClass(),
-                    source.getLogger(),
+                    source.getLogger() != null ? source.getLogger(): Logger.getLogger(source.getLoggerName()), 
                     source.getTimeStamp(),
                     source.getLevel(),
                     newMsg,

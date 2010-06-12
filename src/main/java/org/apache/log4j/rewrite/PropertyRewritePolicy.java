@@ -16,14 +16,14 @@
  */
 package org.apache.log4j.rewrite;
 
-import org.apache.log4j.spi.LoggingEvent;
-import org.apache.log4j.rewrite.RewritePolicy;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.StringTokenizer;
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.spi.LoggingEvent;
 
 /**
  * This policy rewrites events by adding
@@ -75,7 +75,7 @@ public class PropertyRewritePolicy implements RewritePolicy {
 
             return new LoggingEvent(
                     source.getFQNOfLoggerClass(),
-                    source.getLogger(),
+                    source.getLogger() != null ? source.getLogger(): Logger.getLogger(source.getLoggerName()), 
                     source.getTimeStamp(),
                     source.getLevel(),
                     source.getMessage(),
