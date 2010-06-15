@@ -17,22 +17,20 @@
 
 package org.apache.log4j.net;
 
-import org.apache.log4j.plugins.Pauseable;
-import org.apache.log4j.plugins.Receiver;
-import org.apache.log4j.spi.Decoder;
-import org.apache.log4j.spi.LoggingEvent;
-
 import java.io.IOException;
-
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import org.apache.log4j.plugins.Pauseable;
+import org.apache.log4j.plugins.Receiver;
+import org.apache.log4j.spi.Decoder;
+import org.apache.log4j.spi.LoggingEvent;
 
 
 /**
@@ -106,9 +104,15 @@ public class MulticastReceiver extends Receiver implements PortBased,
     if (advertiseViaMulticastDNS) {
         zeroConf.unadvertise();
     }
-    handlerThread.interrupt();
-    receiverThread.interrupt();
-    socket.close();
+    if (handlerThread != null) {
+        handlerThread.interrupt();
+    }
+    if (receiverThread != null) {
+        receiverThread.interrupt();
+    }
+    if (socket != null) {
+        socket.close();
+    }
   }
 
   public void setAddress(String address) {
