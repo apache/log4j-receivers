@@ -25,6 +25,7 @@
         Initial release of receivers companion backported from log4j 1.3.
       </action>
       <action issue="42171" type="fix">SocketHubReceiver duplicates messages</action>
+      <action issue="49078" action="fix">javadoc.jar was missing NOTICE and LICENSE.</action>
     </release>
   </body>
 </document>
