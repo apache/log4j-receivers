@@ -51,7 +51,6 @@ import org.apache.log4j.spi.LoggingEvent;
 
 */
 public class XMLSocketReceiver extends Receiver implements Runnable, PortBased, Pauseable {
-  protected boolean active = false;
   private boolean paused;
   //default to log4j xml decoder
   protected String decoder = "org.apache.log4j.xml.XMLDecoder";

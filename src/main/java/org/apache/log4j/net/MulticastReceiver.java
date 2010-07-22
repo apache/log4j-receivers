@@ -44,7 +44,6 @@ import org.apache.log4j.spi.LoggingEvent;
 public class MulticastReceiver extends Receiver implements PortBased,
   AddressBased, Pauseable {
   private static final int PACKET_LENGTH = 16384;
-  private boolean isActive = false;
   private int port;
   private String address;
   private String encoding;
@@ -100,7 +99,7 @@ public class MulticastReceiver extends Receiver implements PortBased,
   }
 
   public synchronized void shutdown() {
-    isActive = false;
+    active = false;
     if (advertiseViaMulticastDNS) {
         zeroConf.unadvertise();
     }
@@ -152,7 +151,7 @@ public class MulticastReceiver extends Receiver implements PortBased,
     }
 
     try {
-      isActive = true;
+      active = true;
       socket = new MulticastSocket(port);
       socket.joinGroup(addr);
       receiverThread = new MulticastReceiverThread();
@@ -246,12 +245,12 @@ public class MulticastReceiver extends Receiver implements PortBased,
     }
 
     public void run() {
-      isActive = true;
+      active = true;
 
       byte[] b = new byte[PACKET_LENGTH];
       DatagramPacket p = new DatagramPacket(b, b.length);
 
-      while (isActive) {
+      while (active) {
         try {
           socket.receive(p);
 

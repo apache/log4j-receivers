@@ -112,6 +112,7 @@ public class UDPReceiver extends Receiver implements PortBased, Pauseable {
       return;
     }
     closed = true;
+    active = false;
     // Closing the datagram socket will unblock the UDPReceiverThread if it is
     // was waiting to receive data from the socket.
     if (socket != null) {
@@ -166,7 +167,7 @@ public class UDPReceiver extends Receiver implements PortBased, Pauseable {
         zeroConf = new ZeroConfSupport(ZONE, port, getName());
         zeroConf.advertise();
       }
-
+      active = true;
     } catch (IOException ioe) {
       ioe.printStackTrace();
     }
