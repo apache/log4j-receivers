@@ -813,14 +813,24 @@ public class LogFilePatternReceiver extends Receiver {
    * @return string
    */
   private String replaceMetaChars(String input) {
+    //escape backslash first since that character is used to escape the remaining meta chars
+    input = globalReplace("\\", "\\\\", input);
+
+    //don't escape star - it's used as the wildcard
+    input = globalReplace("]", "\\]", input);
+    input = globalReplace("[", "\\[", input);
+    input = globalReplace("^", "\\^", input);
+    input = globalReplace("$", "\\$", input);
+    input = globalReplace(".", "\\.", input);
+    input = globalReplace("|", "\\|", input);
+    input = globalReplace("?", "\\?", input);
+    input = globalReplace("+", "\\+", input);
     input = globalReplace("(", "\\(", input);
     input = globalReplace(")", "\\)", input);
-    input = globalReplace("[", "\\[", input);
-    input = globalReplace("]", "\\]", input);
+    input = globalReplace("-", "\\-", input);
     input = globalReplace("{", "\\{", input);
     input = globalReplace("}", "\\}", input);
     input = globalReplace("#", "\\#", input);
-    input = globalReplace("/", "\\/", input);
     return input;
   }
 
