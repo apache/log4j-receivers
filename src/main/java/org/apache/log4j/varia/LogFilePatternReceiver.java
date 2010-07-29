@@ -600,7 +600,9 @@ public class LogFilePatternReceiver extends Receiver {
    * @return string
    */
   private String convertTimestamp() {
-    return util.substitute("s/("+VALID_DATEFORMAT_CHAR_PATTERN+")+/\\\\w+/g", timestampFormat);
+    //some locales (for example, French) generate timestamp text with characters not included in \w -
+    // now using \S (all non-whitespace characters) instead of /w 
+    return util.substitute("s/("+VALID_DATEFORMAT_CHAR_PATTERN+")+/\\\\S+/g", timestampFormat);
   }
 
     protected void setHost(String host) {
