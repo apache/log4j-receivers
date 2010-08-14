@@ -181,7 +181,8 @@ public class LogFilePatternReceiver extends Receiver {
   private Perl5Util util = null;
   private Perl5Compiler exceptionCompiler = null;
   private Perl5Matcher exceptionMatcher = null;
-  private static final String VALID_DATEFORMAT_CHAR_PATTERN = "[GyMwWDdFEaHkKhmsSzZ]";
+  private static final String VALID_DATEFORMAT_CHARS = "GyMwWDdFEaHkKhmsSzZ";
+  private static final String VALID_DATEFORMAT_CHAR_PATTERN = "[" + VALID_DATEFORMAT_CHARS + "]";
 
   private Rule expressionRule;
 
@@ -648,7 +649,7 @@ public class LogFilePatternReceiver extends Receiver {
     matchingKeywords = new ArrayList();
 
     if (timestampFormat != null) {
-      dateFormat = new SimpleDateFormat(timestampFormat);
+      dateFormat = new SimpleDateFormat(quoteTimeStampChars(timestampFormat));
       timestampPatternText = convertTimestamp();
     }
     //if custom level definitions exist, parse them
@@ -769,6 +770,32 @@ public class LogFilePatternReceiver extends Receiver {
         } catch (NumberFormatException nfe) {
             return false;
         }
+    }
+
+    private String quoteTimeStampChars(String input) {
+        //put single quotes around text that isn't a supported dateformat char
+        StringBuffer result = new StringBuffer();
+        //ok to default to false because we also check for index zero below
+        boolean lastCharIsDateFormat = false;
+        for (int i = 0;i<input.length();i++) {
+            String thisVal = input.substring(i, i + 1);
+            boolean thisCharIsDateFormat = VALID_DATEFORMAT_CHARS.contains(thisVal);
+            //we have encountered a non-dateformat char
+            if (!thisCharIsDateFormat && (i == 0 || lastCharIsDateFormat)) {
+                result.append("'");
+            }
+            //we have encountered a dateformat char after previously encountering a non-dateformat char
+            if (thisCharIsDateFormat && i > 0 && !lastCharIsDateFormat) {
+                result.append("'");
+            }
+            lastCharIsDateFormat = thisCharIsDateFormat;
+            result.append(thisVal);
+        }
+        //append an end single-quote if we ended with non-dateformat char
+        if (!lastCharIsDateFormat) {
+            result.append("'");
+        }
+        return result.toString();
     }
 
     private String singleReplace(String inputString, String oldString, String newString)
