@@ -554,7 +554,7 @@ public class LogFilePatternReceiver extends Receiver {
         try {
             regexpPattern = compiler.compile(regexp);
         } catch (MalformedPatternException mpe) {
-            throw new RuntimeException("Bad pattern: " + regexp);
+            throw new RuntimeException("Bad pattern: " + regexp, mpe);
         }
     }
 
@@ -603,7 +603,10 @@ public class LogFilePatternReceiver extends Receiver {
   private String convertTimestamp() {
     //some locales (for example, French) generate timestamp text with characters not included in \w -
     // now using \S (all non-whitespace characters) instead of /w 
-    return util.substitute("s/("+VALID_DATEFORMAT_CHAR_PATTERN+")+/\\\\S+/g", timestampFormat);
+    String result = util.substitute("s/("+VALID_DATEFORMAT_CHAR_PATTERN+")+/\\\\S+/g", timestampFormat);
+    //make sure dots in timestamp are escaped
+    result = globalReplace(".", "\\.", result);
+    return result;
   }
 
     protected void setHost(String host) {
@@ -802,13 +805,18 @@ public class LogFilePatternReceiver extends Receiver {
     {
         int propLength = oldString.length();
         int startPos = inputString.indexOf(oldString);
+        if (startPos == -1)
+        {
+            getLogger().info("string: " + oldString + " not found in input: " + inputString + " - returning input");
+            return inputString;
+        }
         if (startPos == 0)
-    {
-        inputString = inputString.substring(propLength);
-        inputString = newString + inputString;
-    } else {
-        inputString = inputString.substring(0, startPos) + newString + inputString.substring(startPos + propLength);
-    }
+        {
+            inputString = inputString.substring(propLength);
+            inputString = newString + inputString;
+        } else {
+            inputString = inputString.substring(0, startPos) + newString + inputString.substring(startPos + propLength);
+        }
         return inputString;
     }
 
