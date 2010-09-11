@@ -26,6 +26,7 @@
       </action>
       <action issue="42171" type="fix">SocketHubReceiver duplicates messages</action>
       <action issue="49078" action="fix">javadoc.jar was missing NOTICE and LICENSE.</action>
+      <action issue="43148" action="fix">Change regular expressions from Apache Oro to java.util.regex.</action>
     </release>
   </body>
 </document>
