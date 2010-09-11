@@ -32,6 +32,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.regex.MatchResult;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -42,19 +46,13 @@ import org.apache.log4j.rule.Rule;
 import org.apache.log4j.spi.LocationInfo;
 import org.apache.log4j.spi.LoggingEvent;
 import org.apache.log4j.spi.ThrowableInformation;
-import org.apache.oro.text.perl.Perl5Util;
-import org.apache.oro.text.regex.MalformedPatternException;
-import org.apache.oro.text.regex.MatchResult;
-import org.apache.oro.text.regex.Pattern;
-import org.apache.oro.text.regex.Perl5Compiler;
-import org.apache.oro.text.regex.Perl5Matcher;
 
 /**
  * LogFilePatternReceiver can parse and tail log files, converting entries into
  * LoggingEvents.  If the file doesn't exist when the receiver is initialized, the
  * receiver will look for the file once every 10 seconds.
  * <p>
- * This receiver relies on ORO Perl5 features to perform the parsing of text in the 
+ * This receiver relies on java.util.regex features to perform the parsing of text in the
  * log file, however the only regular expression field explicitly supported is 
  * a glob-style wildcard used to ignore fields in the log file if needed.  All other
  * fields are parsed by using the supplied keywords.
@@ -178,9 +176,6 @@ public class LogFilePatternReceiver extends Receiver {
   private String filterExpression;
   private long waitMillis = 2000; //default 2 seconds
 
-  private Perl5Util util = null;
-  private Perl5Compiler exceptionCompiler = null;
-  private Perl5Matcher exceptionMatcher = null;
   private static final String VALID_DATEFORMAT_CHARS = "GyMwWDdFEaHkKhmsSzZ";
   private static final String VALID_DATEFORMAT_CHAR_PATTERN = "[" + VALID_DATEFORMAT_CHARS + "]";
 
@@ -212,10 +207,9 @@ public class LogFilePatternReceiver extends Receiver {
     keywords.add(METHOD);
     keywords.add(MESSAGE);
     keywords.add(NDC);
-    exceptionCompiler = new Perl5Compiler();
     try {
-        exceptionPattern = exceptionCompiler.compile(EXCEPTION_PATTERN);
-    } catch (MalformedPatternException mpe) {
+        exceptionPattern = Pattern.compile(EXCEPTION_PATTERN);
+    } catch (PatternSyntaxException pse) {
         //shouldn't happen
     }
   }
@@ -393,7 +387,8 @@ public class LogFilePatternReceiver extends Receiver {
    */
   private int getExceptionLine() {
     for (int i = 0; i < additionalLines.size(); i++) {
-      if (exceptionMatcher.matches((String) additionalLines.get(i), exceptionPattern)) {
+      Matcher exceptionMatcher = exceptionPattern.matcher((String)additionalLines.get(i));
+      if (exceptionMatcher.matches()) {
         return i;
       }
     }
@@ -486,19 +481,21 @@ public class LogFilePatternReceiver extends Receiver {
     /**
    * Read, parse and optionally tail the log file, converting entries into logging events.
    *
-   * A runtimeException is thrown if the logFormat pattern is malformed
-   * according to ORO's Perl5Compiler.
+   * A runtimeException is thrown if the logFormat pattern is malformed.
    *
    * @param bufferedReader
    * @throws IOException
    */
   protected void process(BufferedReader bufferedReader) throws IOException {
-        Perl5Matcher eventMatcher = new Perl5Matcher();
+        Matcher eventMatcher;
+        Matcher exceptionMatcher;
         String line;
         while ((line = bufferedReader.readLine()) != null) {
             //skip empty line entries
+            eventMatcher = regexpPattern.matcher(line);
             if (line.trim().equals("")) {continue;}
-            if (eventMatcher.matches(line, regexpPattern)) {
+            exceptionMatcher = exceptionPattern.matcher(line);
+            if (eventMatcher.matches()) {
                 //build an event from the previous match (held in current map)
                 LoggingEvent event = buildEvent();
                 if (event != null) {
@@ -506,8 +503,8 @@ public class LogFilePatternReceiver extends Receiver {
                         doPost(event);
                     }
                 }
-                currentMap.putAll(processEvent(eventMatcher.getMatch()));
-            } else if (eventMatcher.matches(line, exceptionPattern)) {
+                currentMap.putAll(processEvent(eventMatcher.toMatchResult()));
+            } else if (exceptionMatcher.matches()) {
                 //an exception line
                 additionalLines.add(line);
             } else {
@@ -546,16 +543,8 @@ public class LogFilePatternReceiver extends Receiver {
         }
     }
 
-    /**
-     * create the regular expression pattern using the input regular expression
-     */
     protected void createPattern() {
-        Perl5Compiler compiler = new Perl5Compiler();
-        try {
-            regexpPattern = compiler.compile(regexp);
-        } catch (MalformedPatternException mpe) {
-            throw new RuntimeException("Bad pattern: " + regexp, mpe);
-        }
+        regexpPattern = Pattern.compile(regexp);
     }
 
     /**
@@ -574,7 +563,7 @@ public class LogFilePatternReceiver extends Receiver {
   }
 
     /**
-   * Convert the ORO match into a map.
+   * Convert the match into a map.
    * <p>
    * Relies on the fact that the matchingKeywords list is in the same
    * order as the groups in the regular expression
@@ -585,7 +574,7 @@ public class LogFilePatternReceiver extends Receiver {
   private Map processEvent(MatchResult result) {
     Map map = new HashMap();
     //group zero is the entire match - process all other groups
-    for (int i = 1; i < result.groups(); i++) {
+    for (int i = 1; i < result.groupCount() + 1; i++) {
       Object key = matchingKeywords.get(i - 1);
       Object value = result.group(i);
       map.put(key, value);
@@ -603,9 +592,9 @@ public class LogFilePatternReceiver extends Receiver {
   private String convertTimestamp() {
     //some locales (for example, French) generate timestamp text with characters not included in \w -
     // now using \S (all non-whitespace characters) instead of /w 
-    String result = util.substitute("s/("+VALID_DATEFORMAT_CHAR_PATTERN+")+/\\\\S+/g", timestampFormat);
+    String result = timestampFormat.replaceAll(VALID_DATEFORMAT_CHAR_PATTERN + "+", "\\\\S+");
     //make sure dots in timestamp are escaped
-    result = globalReplace(".", "\\.", result);
+    result = result.replaceAll(Pattern.quote("."), "\\\\.");
     return result;
   }
 
@@ -642,10 +631,6 @@ public class LogFilePatternReceiver extends Receiver {
 	if (path == null || path.trim().equals("")) {
 		path = fileURL;
 	}
-
-    util = new Perl5Util();
-    exceptionCompiler = new Perl5Compiler();
-    exceptionMatcher = new Perl5Matcher();
 
     currentMap = new HashMap();
     additionalLines = new ArrayList();
@@ -731,9 +716,8 @@ public class LogFilePatternReceiver extends Receiver {
 
     //compress one or more spaces in the pattern into the [ ]+ regexp
     //(supports padding of level in log files)
-    newPattern = util.substitute("s/" + MULTIPLE_SPACES_REGEXP +"/" + MULTIPLE_SPACES_REGEXP + "/g", newPattern);
-    newPattern = globalReplace(PATTERN_WILDCARD, REGEXP_DEFAULT_WILDCARD, newPattern);
-
+    newPattern = newPattern.replaceAll(MULTIPLE_SPACES_REGEXP, MULTIPLE_SPACES_REGEXP);
+    newPattern = newPattern.replaceAll(Pattern.quote(PATTERN_WILDCARD), REGEXP_DEFAULT_WILDCARD);
     //use buildingKeywords here to ensure correct order
     for (int i = 0;i<buildingKeywords.size();i++) {
       String keyword = (String) buildingKeywords.get(i);
@@ -748,7 +732,6 @@ public class LogFilePatternReceiver extends Receiver {
         newPattern = singleReplace(newPattern, String.valueOf(i), DEFAULT_GROUP);
       }
     }
-
 
     regexp = newPattern;
     getLogger().debug("regexp is " + regexp);
@@ -829,20 +812,6 @@ public class LogFilePatternReceiver extends Receiver {
   }
 
     /**
-   * Helper method that will globally replace a section of text
-   *
-   * @param pattern
-   * @param replacement
-   * @param input
-   *
-   * @return string
-   */
-  private String globalReplace(String pattern, String replacement, String input) {
-    return util.substitute("s/" + Perl5Compiler.quotemeta(pattern) + "/"
-        + Perl5Compiler.quotemeta(replacement) + "/g", input);
-  }
-
-    /**
    * Some perl5 characters may occur in the log file format.
    * Escape these characters to prevent parsing errors.
    *
@@ -851,23 +820,23 @@ public class LogFilePatternReceiver extends Receiver {
    */
   private String replaceMetaChars(String input) {
     //escape backslash first since that character is used to escape the remaining meta chars
-    input = globalReplace("\\", "\\\\", input);
+    input = input.replaceAll("\\\\", "\\\\\\");
 
     //don't escape star - it's used as the wildcard
-    input = globalReplace("]", "\\]", input);
-    input = globalReplace("[", "\\[", input);
-    input = globalReplace("^", "\\^", input);
-    input = globalReplace("$", "\\$", input);
-    input = globalReplace(".", "\\.", input);
-    input = globalReplace("|", "\\|", input);
-    input = globalReplace("?", "\\?", input);
-    input = globalReplace("+", "\\+", input);
-    input = globalReplace("(", "\\(", input);
-    input = globalReplace(")", "\\)", input);
-    input = globalReplace("-", "\\-", input);
-    input = globalReplace("{", "\\{", input);
-    input = globalReplace("}", "\\}", input);
-    input = globalReplace("#", "\\#", input);
+    input = input.replaceAll(Pattern.quote("]"), "\\\\]");
+    input = input.replaceAll(Pattern.quote("["), "\\\\[");
+    input = input.replaceAll(Pattern.quote("^"), "\\\\^");
+    input = input.replaceAll(Pattern.quote("$"), "\\\\$");
+    input = input.replaceAll(Pattern.quote("."), "\\\\.");
+    input = input.replaceAll(Pattern.quote("|"), "\\\\|");
+    input = input.replaceAll(Pattern.quote("?"), "\\\\?");
+    input = input.replaceAll(Pattern.quote("+"), "\\\\+");
+    input = input.replaceAll(Pattern.quote("("), "\\\\(");
+    input = input.replaceAll(Pattern.quote(")"), "\\\\)");
+    input = input.replaceAll(Pattern.quote("-"), "\\\\-");
+    input = input.replaceAll(Pattern.quote("{"), "\\\\{");
+    input = input.replaceAll(Pattern.quote("}"), "\\\\}");
+    input = input.replaceAll(Pattern.quote("#"), "\\\\#");
     return input;
   }
 
