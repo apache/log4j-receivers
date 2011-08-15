@@ -21,6 +21,7 @@
   </properties>
   <body>
     <release version="1.0" date="TDB" description="First release">
+      <action action="update">Upgraded to Apache Maven 3</action>
       <action issue="42102" type="add">
         Initial release of receivers companion backported from log4j 1.3.
       </action>
